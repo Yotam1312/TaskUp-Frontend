@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const m=require\\(''./node_modules/moti/package.json''\\); console.log\\(JSON.stringify\\({peerDeps:m.peerDependencies,deps:m.dependencies},null,2\\)\\)\")",
+      "Bash(npx expo:*)",
+      "Bash(find \"/a/Download/TaskUp_UI \\(1\\)/TaskUp_UI\" -type f -name \"*.json\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.md\" -o -name \"*.yml\" -o -name \"*.yaml\")",
+      "Bash(ls -la \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI\")",
+      "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI/src\" -type f \\\\\\( -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.ts\" -o -name \"*.tsx\" \\\\\\))",
+      "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI\" -maxdepth 2 \\\\\\( -name \".env*\" -o -name \"*.env\" \\\\\\))"
+    ]
+  }
+}

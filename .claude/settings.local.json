@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI/\")",
+      "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI/public\" -type f)",
+      "Bash(ls \"a:\\\\Download\\\\TaskUp_UI \\(1\\)\\\\TaskUp_UI\\\\src\\\\pages\"\")",
+      "Bash(npm install:*)"
+    ]
+  }
+}

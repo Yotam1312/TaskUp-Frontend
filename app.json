@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "TaskUp",
+    "slug": "taskup",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": false },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#4f46e5" }
+    }
+  }
+}
