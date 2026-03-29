@@ -202,7 +202,7 @@ const scrollToCard = (taskId) => {
 
       {/* Header */}
       <View style={{
-        paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16,
+        paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16, marginTop: 10,
         flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between', alignItems: 'center',
       }}>
@@ -213,7 +213,7 @@ const scrollToCard = (taskId) => {
             </Text>
           ) : (
             <>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
+              <Text style={{ fontSize: 23, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
                 {greeting}
               </Text>
               <Animated.Text style={{ fontSize: 14, fontWeight: '600', color: darkMode ? '#94a3b8' : '#475569', transform: [{ scale: pulseAnim }] }}>

@@ -118,7 +118,7 @@ const handleIconClick = () => {
   };
 
   // Colors
-  const cardBg = darkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)';
+  const cardBg = darkMode ? 'rgba(23, 37, 70, 0.58)' : 'rgba(255, 255, 255, 0.52)';
   const cardBorder = darkMode ? '#1e293b' : '#e2e8f0';
   const titleColor = darkMode ? '#f1f5f9' : '#0f172a';
   const courseColor = darkMode ? '#98a6b8' : '#64748b';

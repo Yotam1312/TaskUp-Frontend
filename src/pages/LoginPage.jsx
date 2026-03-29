@@ -9,6 +9,7 @@ import { loginUser } from '../api';
 import { User, Lock, ArrowLeft, ArrowRight, Layers, GraduationCap, Sparkles, Eye, EyeOff, Globe } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+
 export default function LoginPage({ language, setLanguage, t, darkMode }) {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
@@ -36,7 +37,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
       setLoading(false);
     }
   };
- 
+
 
   const handleMoodleLogin = handleLogin;
 
@@ -100,64 +101,81 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
           }}>
 
             {/* Logo with float animation */}
-            <MotiView
-              from={{ translateY: 0 }}
-              animate={{ translateY: -10 }}
-              transition={{ type: 'timing', duration: 2500, loop: true, repeatReverse: true }}
-              style={{ marginBottom: 32 }}
-            >
-              <View style={{ position: 'relative' }}>
-                {/* Glow */}
-                <View style={{
-                  position: 'absolute', inset: 0,
-                  backgroundColor: '#4f46e5',
-                  borderRadius: 28,
-                  opacity: 0.25,
-                  transform: [{ scale: 1.2 }],
-                }} />
-                <LinearGradient
-                  colors={['#4f46e5', '#7c3aed']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    width: 96, height: 96, borderRadius: 28,
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#4f46e5',
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.45,
-                    shadowRadius: 14,
-                    elevation: 10,
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* Inner highlight */}
-                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: 'rgba(255,255,255,0.15)', borderTopLeftRadius: 28, borderTopRightRadius: 28 }} />
-                  <Layers color="white" size={40} strokeWidth={1.5} />
-                  {/* Sparkle */}
-                  <MotiView
-                    from={{ opacity: 0.5, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1.1 }}
-                    transition={{ type: 'timing', duration: 2000, loop: true, repeatReverse: true }}
-                    style={{ position: 'absolute', top: 10, right: 10 }}
-                  >
-                    <Sparkles size={10} color="white" fill="white" />
-                  </MotiView>
-                </LinearGradient>
-              </View>
-            </MotiView>
+            {/* Logo */}
+            <View style={{ alignItems: 'center', justifyContent: 'center', width: 120, height: 120, marginBottom: 10 }}>
+              
+              {/* הילה אחורית עדינה */}
+              <View style={{ 
+                position: 'absolute', 
+                width: 100, 
+                height: 100, 
+                borderRadius: 50, 
+                backgroundColor: '#4f46e5', 
+                opacity: 0.1, 
+                zIndex: -1 
+              }} />
 
+              {/* הטבעת הכחולה (Indigo) */}
+              <View style={{
+                position: 'absolute',
+                width: 100, height: 100,
+                borderRadius: 50,
+                borderWidth: 10,
+                borderColor: '#4f46e5',
+                borderTopColor: 'transparent',
+                borderRightColor: 'transparent',
+                transform: [{ rotate: '-15deg' }]
+              }} />
+
+              {/* ראש החץ (משולש Indigo) */}
+              <View style={{
+                position: 'absolute',
+                top: 20,
+                right: 83,
+                width: 0, height: 0,
+                borderLeftWidth: 12,
+                borderRightWidth: 12,
+                borderBottomWidth: 20,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: '#4f46e5',
+                transform: [{ rotate: '30deg' }]
+              }} />
+
+              {/* סימן הווי (Violet) */}
+              <View style={{
+                position: 'absolute',
+                width: 35, height: 60,
+                borderBottomWidth: 10,
+                borderRightWidth: 10,
+                borderColor: '#7c3aed',
+                transform: [{ rotate: '40deg' }],
+                top: 15,
+                left: 45
+              }} />
+              
+            </View>
             {/* Title */}
+            {/* Title Section */}
             <View style={{ alignItems: 'center', marginBottom: 32 }}>
               <Text style={{
-                fontSize: 50, fontWeight: '900', color: '#4f46e5',
-                letterSpacing: -1, marginBottom: 6,
+                fontSize: 50,
+                fontWeight: '900',
+                letterSpacing: -1,
+                marginBottom: 6,
               }}>
-                TaskUp
+                {/* צבע סגול מותגי */}
+                <Text style={{ color: '#4f46e5' }}>Task</Text>
+                <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>im</Text>
               </Text>
+
+              {/* הסלוגן המתורגם */}
               <Text style={{
                 color: darkMode ? '#cbd5e1' : '#475569',
-                fontSize: 12, fontWeight: '500',
-                letterSpacing: 2.5, textTransform: 'uppercase',
+                fontSize: 12,
+                fontWeight: '500',
+                letterSpacing: 2.5,
+                textTransform: 'uppercase',
                 textAlign: 'center',
               }}>
                 {t.login.slogan}
@@ -293,43 +311,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
               </Text>
             ) : null}
 
-            {/* Divider */}
-            <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(148,163,184,0.3)' }} />
-              <View style={{
-                paddingHorizontal: 16, paddingVertical: 4,
-                backgroundColor: darkMode ? '#141414' : '#f1f5f9',
-                borderRadius: 100, marginHorizontal: 8,
-                borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-              }}>
-                <Text style={{ fontSize: 10, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 2 }}>
-                  {t.login.or}
-                </Text>
-              </View>
-              <View style={{ flex: 1, height: 1, backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(148,163,184,0.3)' }} />
-            </View>
 
-            {/* Moodle Button */}
-            <TouchableOpacity
-              onPress={handleMoodleLogin}
-              activeOpacity={0.9}
-              style={{
-                width: '100%', height: 56,
-                backgroundColor: '#f98012',
-                borderRadius: 16,
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-                shadowColor: '#f97316',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 10,
-                elevation: 6,
-              }}
-            >
-              <GraduationCap size={24} color="white" strokeWidth={2} />
-              <Text style={{ color: 'white', fontSize: 17, fontWeight: '600', letterSpacing: 0.5 }}>
-                {t.login.moodleButton}
-              </Text>
-            </TouchableOpacity>
 
           </View>
         </MotiView>
