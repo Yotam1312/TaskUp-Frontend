@@ -39,7 +39,8 @@ export default function Dashboard({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [tabBarWidth, setTabBarWidth] = useState(0);
-  const isRTL = language === 'he';
+  const isRTL = true
+  const [scrollPadding, setScrollPadding] = useState(20);
 
   const [tasks, setTasks] = useState([]);
   const pendingCount = tasks.filter(task => task.status === 'pending').length;
@@ -62,7 +63,7 @@ export default function Dashboard({
     if (pendingCount > 0) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.12, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ])
       ).start();
@@ -100,6 +101,19 @@ export default function Dashboard({
       stiffness: 200,
     }).start();
   }, [isMenuOpen]);
+
+  const scrollViewRef = useRef(null);
+  const cardPositions = useRef({});
+
+const scrollToCard = (taskId) => {
+  setScrollPadding(400); // מוסיף את המרווח
+  setTimeout(() => {
+    const y = cardPositions.current[taskId];
+    if (y !== undefined && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y, animated: true });
+    }
+  }, 100); // מחכה שהמרווח יתרנדר ואז גולל
+};
 
   useEffect(() => {
     if (!access_token) { setIsLoading(false); return; }
@@ -185,87 +199,102 @@ export default function Dashboard({
         bottom: 80, left: -50,
         transform: [{ translateY: blob2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }],
       }} />
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={{
-          paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16,
-          flexDirection: isRTL ? 'row-reverse' : 'row',
-          justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-            {activeTab === 'settings' ? (
-              <Text style={{ fontSize: 24, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
-                {t.settings.title}
-              </Text>
-            ) : (
-              <>
-                <Text style={{ fontSize: 24, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
-                  {greeting}
-                </Text>
-                <Animated.Text style={{ fontSize: 14, fontWeight: '500', color: darkMode ? '#94a3b8' : '#475569', transform: [{ scale: pulseAnim }] }}>
-                  {language === 'he'
-                    ? `יש לך ${pendingCount} ${t.tasks.pendingCount}`
-                    : `You have ${pendingCount} ${t.tasks.pendingCount}`}
-                </Animated.Text>
-              </>
-            )}
-          </View>
 
-          <TouchableOpacity
-            onPress={() => setIsMenuOpen(true)}
-            style={{
-              padding: 8,
-              backgroundColor: darkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.5)',
-              borderRadius: 100,
-            }}
-            activeOpacity={0.7}
-          >
-            <Menu size={26} color={iconColor} />
-          </TouchableOpacity>
+      {/* Header */}
+      <View style={{
+        paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16,
+        flexDirection: isRTL ? 'row-reverse' : 'row',
+        justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+          {activeTab === 'settings' ? (
+            <Text style={{ fontSize: 24, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
+              {t.settings.title}
+            </Text>
+          ) : (
+            <>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
+                {greeting}
+              </Text>
+              <Animated.Text style={{ fontSize: 14, fontWeight: '600', color: darkMode ? '#94a3b8' : '#475569', transform: [{ scale: pulseAnim }] }}>
+                {language === 'he'
+                  ? `יש לך ${pendingCount} ${t.tasks.pendingCount}`
+                  : `You have ${pendingCount} ${t.tasks.pendingCount}`}
+              </Animated.Text>
+            </>
+          )}
         </View>
 
-        {/* Pending / Completed Tabs */}
-        {(activeTab === 'pending' || activeTab === 'completed') && (
-          <>
-            <View
-              onLayout={(e) => setTabBarWidth(e.nativeEvent.layout.width)}
-              style={{
-                marginHorizontal: 24, marginTop: 8, height: 56,
-                backgroundColor: darkMode ? 'rgba(30,41,59,0.6)' : 'rgba(226,232,240,0.6)',
-                borderRadius: 16, padding: 4,
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                overflow: 'hidden',
-              }}
+        <TouchableOpacity
+          onPress={() => setIsMenuOpen(true)}
+          style={{
+            padding: 8,
+            backgroundColor: darkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.5)',
+            borderRadius: 100,
+          }}
+          activeOpacity={0.7}
+        >
+          <Menu size={26} color={iconColor} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Pending / Completed Tabs */}
+
+      {(activeTab === 'pending' || activeTab === 'completed') && (
+        <>
+          <View
+            onLayout={(e) => setTabBarWidth(e.nativeEvent.layout.width)}
+            style={{
+              marginHorizontal: 24, marginTop: 8, height: 56,
+              backgroundColor: darkMode ? 'rgba(30,41,59,0.6)' : 'rgba(226,232,240,0.6)',
+              borderRadius: 16, padding: 4,
+              flexDirection: isRTL ? 'row-reverse' : 'row',
+              overflow: 'hidden',
+            }}
+          >
+            {indicatorPositionStyle && <Animated.View style={indicatorPositionStyle} />}
+
+            <TouchableOpacity
+              onPress={() => setActiveTab('pending')}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}
+              activeOpacity={0.8}
             >
-              {indicatorPositionStyle && <Animated.View style={indicatorPositionStyle} />}
+              <Clock size={16} color={activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8' }}>
+                {t.tabs.pending}
+              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setActiveTab('pending')}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}
-                activeOpacity={0.8}
-              >
-                <Clock size={16} color={activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8'} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8' }}>
-                  {t.tabs.pending}
-                </Text>
-              </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('completed')}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}
+              activeOpacity={0.8}
+            >
+              <CheckCircle size={16} color={activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8'} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8' }}>
+                {t.tabs.completed}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-              <TouchableOpacity
-                onPress={() => setActiveTab('completed')}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 }}
-                activeOpacity={0.8}
-              >
-                <CheckCircle size={16} color={activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8'} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8' }}>
-                  {t.tabs.completed}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
+          <ScrollView
+            ref={scrollViewRef}
+            style={{
+              flex: 1,
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
+              borderBottomLeftRadius: 32,
+              borderBottomRightRadius: 32,
+              marginTop: 12,
+              marginBottom: 10,
+              marginHorizontal: 10,
+              borderWidth: 1,
+              borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              overflow: 'hidden',
+            }}
+            contentContainerStyle={{ paddingBottom: scrollPadding }}
+            showsVerticalScrollIndicator={true}
+          >
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
               {isLoading ? (
                 <>
@@ -276,7 +305,21 @@ export default function Dashboard({
               ) : (
                 <>
                   {filteredTasks.map((task, index) => (
-                    <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
+                    <View
+                      key={task.id}
+                      onLayout={(e) => cardPositions.current[task.id] = e.nativeEvent.layout.y}
+                    >
+                      <TaskCard
+                        task={task}
+                        type={activeTab}
+                        onAction={handleTaskAction}
+                        t={t}
+                        darkMode={darkMode}
+                        index={index}
+                        onNoteOpen={() => scrollToCard(task.id)}
+                        onNoteClose={() => setScrollPadding(20)}
+                      />
+                    </View>
                   ))}
                   {filteredTasks.length === 0 && (
                     <View style={{ paddingVertical: 48, alignItems: 'center' }}>
@@ -288,11 +331,15 @@ export default function Dashboard({
                 </>
               )}
             </View>
-          </>
-        )}
+          </ScrollView>
+        </>
+      )
+      }
 
-        {/* Archive */}
-        {activeTab === 'archive' && (
+
+      {/* Archive */}
+      {
+        activeTab === 'archive' && (
           <>
             <View style={{
               marginHorizontal: 24, marginTop: 16, marginBottom: 16,
@@ -322,10 +369,12 @@ export default function Dashboard({
               )}
             </View>
           </>
-        )}
+        )
+      }
 
-        {/* Settings */}
-        {activeTab === 'settings' && (
+      {/* Settings */}
+      {
+        activeTab === 'settings' && (
           <View style={{ paddingHorizontal: 8 }}>
             <SettingsPage
               customBackAction={() => setActiveTab('pending')}
@@ -338,16 +387,19 @@ export default function Dashboard({
               setNotificationsSettings={setNotificationsSettings}
             />
           </View>
-        )}
-      </ScrollView>
+        )
+      }
+
 
       {/* Drawer backdrop */}
-      {isMenuOpen && (
-        <Pressable
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 40 }]}
-          onPress={() => setIsMenuOpen(false)}
-        />
-      )}
+      {
+        isMenuOpen && (
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 40 }]}
+            onPress={() => setIsMenuOpen(false)}
+          />
+        )
+      }
 
       {/* Slide-in drawer */}
       <Animated.View style={{
@@ -403,7 +455,7 @@ export default function Dashboard({
           </TouchableOpacity>
         </View>
       </Animated.View>
-    </View>
+    </View >
   );
 }
 

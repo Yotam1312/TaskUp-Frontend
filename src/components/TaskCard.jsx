@@ -20,7 +20,8 @@ function ScaleButton({ onPress, style, textStyle, label, disabled = false }) {
   );
 }
 
-export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 }) {
+
+export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,onNoteOpen,onNoteClose }) {
   const [timeLeftString, setTimeLeftString] = useState("");
   const [activeScrollIndex, setActiveScrollIndex] = useState(0);
   const scrollRef = useRef(null);
@@ -46,22 +47,32 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
   const handleClose = () => {
     setNoteMode('closed');
     onAction('updateNote', task.id, tempNote);
+    if (onNoteClose) onNoteClose()
   };
 
-  const handleIconClick = () => {
+const handleIconClick = () => {
     if (noteMode !== 'closed') {
       handleClose();
     } else {
-      buttonRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
-        // Position popup to the LEFT of the button (button is on right side in RTL)
-        setPopupPos({
-          top: Math.max(60, pageY - 80),
-          left: Math.max(8, pageX - 230),
+      // 1. מפעילים את הגלילה למעלה
+      if (onNoteOpen) onNoteOpen();
+      
+      // 2. מחכים שהגלילה תסתיים (400 מילישניות)
+      setTimeout(() => {
+        // 3. מודדים את המיקום החדש של הכפתור (עכשיו הוא אמור להיות למעלה)
+        buttonRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
+          setPopupPos({
+            top: Math.max(60, pageY - 80),
+            left: Math.max(8, pageX - 230),
+          });
+          // 4. פותחים את הפופאפ במיקום העליון והבטוח
+          setNoteMode('preview');
         });
-      });
-      setNoteMode('preview');
+      }, 400);
     }
   };
+
+
 
   const isOverdue = () => new Date() > new Date(task.dueDateIso);
   const overdue = isOverdue();
@@ -110,7 +121,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
   const cardBg = darkMode ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.9)';
   const cardBorder = darkMode ? '#1e293b' : '#e2e8f0';
   const titleColor = darkMode ? '#f1f5f9' : '#0f172a';
-  const courseColor = darkMode ? '#64748b' : '#64748b';
+  const courseColor = darkMode ? '#98a6b8' : '#64748b';
   const btnBorder = darkMode ? '#475569' : '#1e293b';
   const btnText = darkMode ? '#e2e8f0' : '#1e293b';
   const dateBg = darkMode ? '#0f172a' : 'white';
@@ -163,13 +174,13 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
               <ScaleButton
                 onPress={handleSubmitLink}
                 style={[styles.actionBtn, { borderColor: btnBorder }]}
-                textStyle={{ fontSize: 11, fontWeight: '700', color: btnText, textAlign: 'center' }}
+                textStyle={{ fontSize: 13, fontWeight: '700', color: btnText, textAlign: 'center' }}
                 label={t.buttons.submit}
               />
               <ScaleButton
                 onPress={() => onAction('markAsSubmitted', task.id)}
                 style={[styles.actionBtn, { borderColor: btnBorder }]}
-                textStyle={{ fontSize: 11, fontWeight: '700', color: btnText, textAlign: 'center' }}
+                textStyle={{ fontSize: 13, fontWeight: '700', color: btnText, textAlign: 'center' }}
                 label={t.buttons.markAsSubmitted}
               />
             </>
@@ -236,15 +247,15 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
         <View style={{ flex: 1, paddingLeft: 4, paddingRight: 4, alignItems: 'flex-end' }}>
 
           {/* Dot + Title */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, justifyContent: 'flex-end', width: '100%' }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: titleColor, lineHeight: 22, textAlign: 'right', flexShrink: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, justifyContent: 'flex-end', width: '100%' }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: titleColor, lineHeight: 22, textAlign: 'right', flexShrink: 1 }}>
               {task.title}
             </Text>
             <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: getDotColor(), flexShrink: 0 }} />
           </View>
 
           {/* Course */}
-          <Text style={{ fontSize: 11, fontWeight: '500', color: courseColor, marginBottom: 14, marginRight: 20, textAlign: 'right', letterSpacing: 0.3 }}>
+          <Text style={{ fontSize: 14, fontWeight: '500', color: courseColor, marginBottom: 14, marginRight: 20, textAlign: 'right', letterSpacing: 0.3 }}>
             {task.course}
           </Text>
 
@@ -321,9 +332,9 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
       <Modal visible={noteMode === 'preview'} transparent animationType="none" onRequestClose={handleClose}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
         <MotiView
-          from={{ opacity: 0, scale: 0.8 }}
+          from={{ opacity: 0.99, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', damping: 18 }}
+          transition={{ type: 'timing', damping: 18 }}
           style={{
             position: 'absolute',
             top: popupPos.top,
@@ -373,7 +384,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
                 animate={{ opacity: 1, translateY: 0 }}
                 exit={{ opacity: 0, translateY: 5 }}
                 transition={{ type: 'timing', duration: 200 }}
-                style={{ position: 'absolute', bottom: 44, left: 8 }}
+                style={{ position: 'absolute', bottom: 49, left: 10 }}
               >
                 <TouchableOpacity
                   onPress={handleClear}
@@ -384,7 +395,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: darkMode ? '#a5b4fc' : '#4f46e5' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: darkMode ? '#a5b4fc' : '#4f46e5' }}>
                     {t.notes.clear}
                   </Text>
                 </TouchableOpacity>
@@ -426,17 +437,17 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
       {/* NOTE EDIT MODAL (fullscreen) */}
       <Modal visible={noteMode === 'edit'} transparent animationType="none" onRequestClose={handleClose}>
         <MotiView
-          from={{ opacity: 0 }}
+          from={{ opacity: 0.9 }}
           animate={{ opacity: 1 }}
           transition={{ type: 'timing', duration: 200 }}
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 16 }]}
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', padding: 5, paddingTop: 150 }]}
         >
           <Pressable style={StyleSheet.absoluteFillObject} onPress={handleClose} />
 
           <MotiView
-            from={{ scale: 0.9, opacity: 0 }}
+            from={{ scale: 0.9, opacity: 0.9 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 18 }}
+            transition={{ type: 'timing', damping: 18 }}
             style={{
               width: '91.666%',
               maxWidth: 448,
@@ -497,8 +508,8 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0 
             />
 
             {/* Bottom bar */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: tempNote.length === 50 ? '#ef4444' : 'transparent' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 12,  }}>
+              <Text style={{ fontSize: 1, fontWeight: '700', color: tempNote.length === 50 ? '#ef4444' : 'transparent' }}>
                 {t.notes.limitWarning}
               </Text>
 

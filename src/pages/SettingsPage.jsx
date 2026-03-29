@@ -6,7 +6,7 @@ export default function SettingsPage({
   darkMode, toggleDarkMode, language, setLanguage,
   notificationsSettings, setNotificationsSettings, t, customBackAction,
 }) {
-  const isRTL = language === 'he';
+  const isRTL = true;
   const notificationOptions = ["3d", "2d", "1d", "12h", "8h", "4h", "2h", "1h"];
 
   const handleDayToggle = (option) => {
@@ -46,7 +46,7 @@ export default function SettingsPage({
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
+      style={{ flex: 0}}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       showsVerticalScrollIndicator={false}
     >

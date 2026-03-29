@@ -33,13 +33,13 @@ export const translations = {
         notes: {
             addNote: "הוסף הערה",
             title: "הערה למטלה",
-            placeholder: "כתוב הערה כאן...",
+            placeholder: "אין הערה כרגע...",
             limitWarning: "אין לחרוג מ-50 תווים",
             chars: "תווים",
-            close: "סגור",       
+            close: "שמור",       
             expand: "פתח לעריכה", 
             preview: "הצצה",
-            empty: "...אין הערה כרגע",
+            empty: "אין הערה כרגע...",
             clear: "נקה הכל"
         },
         // --------------------------------
@@ -113,7 +113,7 @@ export const translations = {
             placeholder: "Write a note here...",
             limitWarning: "Max 50 characters",
             chars: "chars",
-            close: "Close",
+            close: "Save",
             expand: "Expand",
             preview: "Preview",
             empty: "No note right now...",
