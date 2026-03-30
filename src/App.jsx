@@ -67,7 +67,11 @@ export default function App() {
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen name="Dashboard">
+            <Stack.Screen name="Dashboard"
+              options={{
+                gestureEnabled: false, // מבטל את תנועת ה-Swipe לחזור אחורה
+                headerShown: false     // מוודא שה-Header המובנה של הספרייה לא מופיע
+              }}>
               {(props) => (
                 <Dashboard
                   {...props}

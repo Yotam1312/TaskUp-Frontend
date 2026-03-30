@@ -9,6 +9,7 @@ import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
 import SettingsPage from './SettingsPage';
 import { fetchTasks } from '../api';
+import { Alert } from 'react-native';
 
 function transformTask(apiTask) {
   const date = new Date(apiTask.due_date);  // עכשיו ISO string מהDB
@@ -157,6 +158,32 @@ const scrollToCard = (taskId) => {
     setActiveTab(tab);
     setIsMenuOpen(false);
   };
+
+
+
+const handleLogoutPress = () => {
+  Alert.alert(
+    t.menu.logout, 
+    t.menu.logoutConfirm, // שימוש במילון במקום במלל קבוע
+    [
+      {
+        text: language === 'he' ? "ביטול" : "Cancel",
+        style: "cancel",
+      },
+      {
+        text: t.menu.logout,
+        style: "destructive",
+        onPress: () => {
+          setIsMenuOpen(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        },
+      },
+    ]
+  );
+};
 
   const iconColor = darkMode ? '#94a3b8' : '#334155';
   const menuBg = darkMode ? 'rgba(15,23,42,0.97)' : 'rgba(255,255,255,0.97)';
@@ -337,7 +364,7 @@ const scrollToCard = (taskId) => {
       }
 
 
-      {/* Archive */}
+{/* Archive */}
       {
         activeTab === 'archive' && (
           <>
@@ -350,24 +377,42 @@ const scrollToCard = (taskId) => {
                 {t.tabs.archive}
               </Text>
             </View>
-            <View style={{ paddingHorizontal: 16, gap: 12 }}>
-              {isLoading ? (
-                <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></>
-              ) : (
-                <>
-                  {filteredTasks.map((task, index) => (
-                    <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
-                  ))}
-                  {filteredTasks.length === 0 && (
-                    <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-                      <Text style={{ color: darkMode ? '#475569' : '#94a3b8', fontSize: 15 }}>
-                        {t.tasks.noTasks}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
+
+            <ScrollView
+              style={{
+                flex: 1,
+                borderTopLeftRadius: 32,
+                borderTopRightRadius: 32,
+                borderBottomLeftRadius: 32,
+                borderBottomRightRadius: 32,
+                marginBottom: 10,
+                marginHorizontal: 10,
+                borderWidth: 1,
+                borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                overflow: 'hidden',
+              }}
+              contentContainerStyle={{ paddingBottom: scrollPadding }}
+              showsVerticalScrollIndicator={true}
+            >
+              <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
+                {isLoading ? (
+                  <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></>
+                ) : (
+                  <>
+                    {filteredTasks.map((task, index) => (
+                      <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
+                    ))}
+                    {filteredTasks.length === 0 && (
+                      <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                        <Text style={{ color: darkMode ? '#475569' : '#94a3b8', fontSize: 15 }}>
+                          {t.tasks.noTasks}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            </ScrollView>
           </>
         )
       }
@@ -446,7 +491,7 @@ const scrollToCard = (taskId) => {
           <View style={{ height: 1, backgroundColor: darkMode ? '#1e293b' : '#f1f5f9', marginVertical: 8 }} />
 
           <TouchableOpacity
-            onPress={() => { setIsMenuOpen(false); navigation.navigate('Login'); }}
+            onPress={() => handleLogoutPress()}
             style={[styles.menuItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             activeOpacity={0.7}
           >

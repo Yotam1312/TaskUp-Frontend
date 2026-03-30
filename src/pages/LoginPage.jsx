@@ -145,13 +145,14 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
               {/* סימן הווי (Violet) */}
               <View style={{
                 position: 'absolute',
-                width: 35, height: 60,
+                width: 25, height: 50,
                 borderBottomWidth: 10,
                 borderRightWidth: 10,
-                borderColor: '#7c3aed',
+                borderRadius: 3,
+                borderColor: '#30b21a',
                 transform: [{ rotate: '40deg' }],
-                top: 15,
-                left: 45
+                top: 30,
+                left: 50
               }} />
               
             </View>
@@ -165,8 +166,8 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
                 marginBottom: 6,
               }}>
                 {/* צבע סגול מותגי */}
-                <Text style={{ color: '#4f46e5' }}>Task</Text>
-                <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>im</Text>
+                <Text style={{ color: '#4f46e5' }}>My</Text>
+                <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>Tasks</Text>
               </Text>
 
               {/* הסלוגן המתורגם */}

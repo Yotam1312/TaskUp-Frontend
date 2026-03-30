@@ -36,8 +36,8 @@ export const translations = {
             placeholder: "אין הערה כרגע...",
             limitWarning: "אין לחרוג מ-50 תווים",
             chars: "תווים",
-            close: "שמור",       
-            expand: "פתח לעריכה", 
+            close: "שמור",
+            expand: "פתח לעריכה",
             preview: "הצצה",
             empty: "אין הערה כרגע...",
             clear: "נקה הכל"
@@ -47,7 +47,8 @@ export const translations = {
             tasks: "המטלות שלי",
             archive: "ארכיון",
             settings: "הגדרות",
-            logout: "התנתק"
+            logout: "התנתק",
+            logoutConfirm: "האם אתה בטוח שברצונך להתנתק?"
         },
         settings: {
             title: "הגדרות",
@@ -124,7 +125,8 @@ export const translations = {
             tasks: "My Tasks",
             archive: "Archive",
             settings: "Settings",
-            logout: "Logout"
+            logout: "Logout",
+            logoutConfirm: "Are you sure you want to logout?"
         },
         settings: {
             title: "Settings",
