@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,6 +19,9 @@ import { translations } from './translations';
 import '../global.css';
 
 const Stack = createNativeStackNavigator();
+//הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה 
+const PREF_LANGUAGE_KEY = 'taskup.pref.language';
+const PREF_THEME_KEY = 'taskup.pref.theme';
 
 
 // הגדרת התנהגות ההתראות כשהאפליקציה פתוחה (Foreground)
@@ -35,6 +39,7 @@ export default function App() {
   const darkMode = colorScheme === 'dark';
   const [language, setLanguage] = useState('he');
   const [expoPushToken, setExpoPushToken] = useState(''); // שמירת הטוקן בסטייט
+  const [prefsHydrated, setPrefsHydrated] = useState(false);//מונע שמירה דיפולטיבית של ערכים לפני שסיימנו לטעון את כל מה שיש בזכרון
 
   const [notificationsSettings, setNotificationsSettings] = useState({
     daysBefore: ["1d"],
@@ -90,9 +95,56 @@ export default function App() {
   }
 
   useEffect(() => {
-    setColorScheme('light');
+    let isMounted = true;
+    //פונקציה שבעת העלאה של האפליקציה זה טוען מהזכרון את ההגדרות
+    const hydratePreferences = async () => {
+      try {
+        const [storedLanguage, storedTheme] = await Promise.all([
+          AsyncStorage.getItem(PREF_LANGUAGE_KEY),
+          AsyncStorage.getItem(PREF_THEME_KEY),
+        ]);
+
+        if (!isMounted) return;
+
+        if (storedLanguage === 'he' || storedLanguage === 'en') {
+          setLanguage(storedLanguage);
+        }
+
+        if (storedTheme === 'dark' || storedTheme === 'light') {
+          setColorScheme(storedTheme);
+        } else {
+          setColorScheme('light');
+        }
+      } catch (error) {
+        console.log('Failed to hydrate preferences:', error);
+        if (isMounted) setColorScheme('light');
+      } finally {
+        if (isMounted) setPrefsHydrated(true);
+      }
+    };
+
+    hydratePreferences();
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+//שמירה של שפה בצורה אוטומטית
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    AsyncStorage.setItem(PREF_LANGUAGE_KEY, language).catch((error) => {
+      console.log('Failed to save language preference:', error);
+    });
+  }, [language, prefsHydrated]);
+//שמירה של צבע בצורה אוטומטית
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    const themeValue = darkMode ? 'dark' : 'light';
+    AsyncStorage.setItem(PREF_THEME_KEY, themeValue).catch((error) => {
+      console.log('Failed to save theme preference:', error);
+    });
+  }, [darkMode, prefsHydrated]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
