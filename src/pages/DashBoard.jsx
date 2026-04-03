@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
   StyleSheet, Pressable,
 } from 'react-native';
-import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, List } from 'lucide-react-native';
+import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
@@ -16,7 +16,9 @@ import {
   markArchived, 
   registerDeviceToken, 
   unmarkSubmitted,
-  unmarkArchived
+  unmarkArchived,
+  fetchNotificationSettings,
+  syncAssignments
 } from '../api';
 import {FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 
@@ -42,7 +44,8 @@ function transformTask(apiTask) {
     dueDateIso: date.toISOString(),
     status: apiTask.computed_status,
     link: apiTask.link || '',
-    submittedLate: false,
+    isSubmittedLate: apiTask.is_submitted_late || false,
+    isCourseExpired: apiTask.is_course_expired || false,
   };
 }
 
@@ -61,6 +64,7 @@ export default function Dashboard({
   const [scrollPadding, setScrollPadding] = useState(20);
   const [tasks, setTasks] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [expandedCourses, setExpandedCourses] = useState({});
 
 
 
@@ -146,17 +150,35 @@ const scrollToCard = (taskId) => {
   }, 100); // מחכה שהמרווח יתרנדר ואז גולל
 };
 
-const loadData = async () => {
+// 1. הגדרה של פונקציית רענון שקטה (בלי סקלטונים)
+const refreshLocalData = async () => {
   if (!access_token) return;
-  setIsLoading(true);
   try {
     const data = await fetchAllTasks(access_token);
     setTasks(data.map(transformTask));
     setPendingCount(data.filter(t => t.computed_status === 'pending').length);
   } catch (error) {
-    setTasks([]);
+    console.error("Local refresh error:", error);
+  }
+};
+
+// 2. הגדרה של פונקציית הטעינה הכבדה (עם סקלטונים וסנכרון מודל)
+const loadData = async () => {
+  if (!access_token) return;
+  setIsLoading(true); // רק כאן הסקלטונים נדלקים
+  try {
+    const localData = await fetchAllTasks(access_token);
+    if (localData.length > 0) {
+      setTasks(localData.map(transformTask));
+      setPendingCount(localData.filter(t => t.computed_status === 'pending').length);
+      setIsLoading(false); // מכבים סקלטונים מהר אם יש מידע ב-DB
+    }
+    await syncAssignments(access_token); // סנכרון כבד מול מודל
+    await refreshLocalData(); // רענון סופי אחרי הסנכרון
+  } catch (error) {
+    console.log("Background sync error:", error);
   } finally {
-    setIsLoading(false);
+    setIsLoading(false); 
   }
 };
 
@@ -166,10 +188,40 @@ useEffect(() => {
 
 useEffect(() => {
   const subscription = Notifications.addNotificationReceivedListener(notification => {
-    loadData(); 
+    refreshLocalData();
   });
   return () => subscription.remove();
 }, [access_token]);
+
+// המרת המספרים מה-DB (למשל [24, 5]) למחרוזות של ה-UI (למשל ["1d", "5h"])
+  const mapHoursToUI = (hoursArray) => {
+    if (!hoursArray || !Array.isArray(hoursArray)) return ["1d"];
+    return hoursArray.map(h => {
+      if (h === 24) return "1d";
+      if (h === 48) return "2d";
+      return `${h}h`;
+    });
+  };
+
+  // משיכת הגדרות ההתראה מהשרת פעם אחת בטעינ
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!accessToken) return;
+      try {
+        const settings = await fetchNotificationSettings(accessToken);
+        if (settings) {
+          setNotificationsSettings({
+            daysBefore: mapHoursToUI(settings.hours_before),
+            newAssignment: settings.notify_on_new_assignment,
+            dateChange: settings.notify_on_due_date_change
+          });
+        }
+      } catch (error) {
+        console.error("Error loading notification settings:", error);
+      }
+    };
+    loadSettings();
+  }, [accessToken]);
 
 
   useEffect(() => {
@@ -209,7 +261,7 @@ const handleTaskAction = async (action, taskId) => {
     else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
     
     // רענון נתונים שקט כדי לוודא סנכרון
-    loadData(); 
+    refreshLocalData();
   } catch (error) {
     // 4. אם נכשל - מחזירים את המצב לקדמותו
     setTasks(previousTasks);
@@ -430,58 +482,101 @@ const handleLogoutPress = () => {
 
 
 {/* Archive */}
-      {
-        activeTab === 'archive' && (
-          <>
-            <View style={{
-              marginHorizontal: 24, marginTop: 16, marginBottom: 16,
-              flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8,
-            }}>
-              <Archive size={20} color={darkMode ? '#94a3b8' : '#475569'} />
-              <Text style={{ fontSize: 20, fontWeight: '700', color: darkMode ? '#94a3b8' : '#475569' }}>
-                {t.tabs.archive}
-              </Text>
-            </View>
+      {activeTab === 'archive' && (
+        <>
+          <View style={{
+            marginHorizontal: 24, marginTop: 16, marginBottom: 16,
+            flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8,
+          }}>
+            <Archive size={20} color={darkMode ? '#94a3b8' : '#475569'} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: darkMode ? '#94a3b8' : '#475569' }}>
+              {t.tabs.archive}
+            </Text>
+          </View>
 
-            <ScrollView
-              style={{
-                flex: 1,
-                borderTopLeftRadius: 32,
-                borderTopRightRadius: 32,
-                borderBottomLeftRadius: 32,
-                borderBottomRightRadius: 32,
-                marginBottom: 10,
-                marginHorizontal: 10,
-                borderWidth: 1,
-                borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                overflow: 'hidden',
-              }}
-              contentContainerStyle={{ paddingBottom: scrollPadding }}
-              showsVerticalScrollIndicator={true}
-            >
-              <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
-                {isLoading ? (
-                  <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></>
-                ) : (
-                  <>
-                    {filteredTasks.map((task, index) => (
-                      <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
-                    ))}
-                    {filteredTasks.length === 0 && (
-                      <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-                        <Text style={{ color: darkMode ? '#475569' : '#94a3b8', fontSize: 15 }}>
-                          {t.tasks.noTasks}
-                        </Text>
+          <ScrollView
+            style={{
+              flex: 1, borderTopLeftRadius: 32, borderTopRightRadius: 32,
+              borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+              marginBottom: 10, marginHorizontal: 10, borderWidth: 1,
+              borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', overflow: 'hidden',
+            }}
+            contentContainerStyle={{ paddingBottom: scrollPadding }}
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
+              {isLoading ? (
+                <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></>
+              ) : (
+                <>
+                  {/* לוגיקת קיבוץ לפי קורסים והצגת אקורדיון */}
+                  {Object.entries(
+                    filteredTasks.reduce((acc, task) => {
+                      const courseName = task.course || 'קורס כללי';
+                      if (!acc[courseName]) acc[courseName] = [];
+                      acc[courseName].push(task);
+                      return acc;
+                    }, {})
+                  ).map(([courseName, courseTasks]) => {
+                    const isExpanded = expandedCourses[courseName];
+                    return (
+                      <View key={courseName} style={{ marginBottom: 8 }}>
+                        {/* כותרת התיקייה */}
+                        {/* כותרת התיקייה */}
+                        <TouchableOpacity
+                          onPress={() => setExpandedCourses(prev => ({ ...prev, [courseName]: !prev[courseName] }))}
+                          style={{
+                            flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between',
+                            backgroundColor: darkMode ? 'rgba(30,41,59,0.8)' : '#f1f5f9',
+                            padding: 16, borderRadius: 16, borderWidth: 1,
+                            borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          {/* צד ימין: אייקון ושם הקורס */}
+                          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 12, flexShrink: 1 }}>
+                            <Folder size={20} color={darkMode ? '#94a3b8' : '#475569'} />
+                            <Text 
+                              style={{ fontSize: 16, fontWeight: '600', color: darkMode ? '#e2e8f0' : '#1e293b', flexShrink: 1 }} 
+                              numberOfLines={1}
+                            >
+                              {courseName.length > 26 ? courseName.substring(0, 26) + '...' : courseName}
+                            </Text>
+                          </View>
+
+                          {/* צד שמאל: מספר מטלות וחץ (צמודים יחד) */}
+                          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 5, marginLeft: 0 }}>
+                            <View style={{ backgroundColor: darkMode ? '#334155' : '#e2e8f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+                              <Text style={{ fontSize: 12, color: darkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold' }}>
+                                {courseTasks.length}
+                              </Text>
+                            </View>
+                            {isExpanded ? <ChevronUp size={20} color={darkMode ? '#94a3b8' : '#475569'} /> : <ChevronDown size={20} color={darkMode ? '#94a3b8' : '#475569'} />}
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* תוכן התיקייה (המטלות) */}
+                        {isExpanded && (
+                          <View style={{ marginTop: 12, gap: 12, paddingHorizontal: 4 }}>
+                            {courseTasks.map((task, index) => (
+                              <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
+                            ))}
+                          </View>
+                        )}
                       </View>
-                    )}
-                  </>
-                )}
-              </View>
-            </ScrollView>
-          </>
-        )
-      }
-
+                    );
+                  })}
+                  {filteredTasks.length === 0 && (
+                    <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+                      <Text style={{ color: darkMode ? '#475569' : '#94a3b8', fontSize: 15 }}>{t.tasks.noTasks}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      )}
       {/* Settings */}
       {
         activeTab === 'settings' && (
@@ -536,7 +631,7 @@ const handleLogoutPress = () => {
 
         <View style={{ gap: 8 }}>
           {[
-            { tab: 'pending', icon: List, label: t.menu.tasks, isActive: activeTab === 'pending' || activeTab === 'completed' },
+            { tab: 'pending', icon: ClipboardList, label: t.menu.tasks, isActive: activeTab === 'pending' || activeTab === 'completed' },
             { tab: 'archive', icon: Archive, label: t.menu.archive, isActive: activeTab === 'archive' },
             { tab: 'settings', icon: Settings, label: t.menu.settings, isActive: activeTab === 'settings' },
           ].map(({ tab, icon: Icon, label, isActive }) => (

@@ -90,6 +90,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    setColorScheme('light');
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
   }, []);
 

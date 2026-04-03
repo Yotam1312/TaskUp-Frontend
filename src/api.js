@@ -173,3 +173,27 @@ export async function unmarkArchived(accessToken, assignmentId) {
   if (!res.ok) throw new Error('Failed to unarchive');
   return res.json();
 }
+
+export async function fetchNotificationSettings(accessToken) {
+  const res = await fetch(`${BASE_URL}/api/notifications/settings`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch settings');
+  return res.json();
+}
+
+export async function syncAssignments(accessToken) {
+  const res = await fetch(`${BASE_URL}/api/assignments/sync`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to sync assignments');
+  return res.json();
+}
