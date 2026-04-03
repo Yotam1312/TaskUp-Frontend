@@ -66,7 +66,7 @@ export const translations = {
             back: "חזור"
         },
         warnings: {
-            deleteMsg: "האם אתה בטוח שברצונך למחוק את המטלה לצמיתות?"
+            deleteMsg: "האם אתה בטוח שברצונך להחזיר את המטלה מהארכיון?"
         },
         login: {
             slogan: "ניהול המטלות האקדמיות שלך",
@@ -141,7 +141,8 @@ export const translations = {
             smsNotif: "SMS Messages",
             pushNotif: "Push Notifications",
             save: "Save Changes",
-            back: "Back"
+            back: "Back",
+            
         },
         warnings: {
             deleteMsg: "Are you sure you want to permanently delete this task?"

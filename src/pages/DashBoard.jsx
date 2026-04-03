@@ -8,8 +8,25 @@ import { useNavigation } from '@react-navigation/native';
 import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
 import SettingsPage from './SettingsPage';
-import { fetchTasks } from '../api';
 import { Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { 
+  fetchAllTasks, 
+  markSubmitted, 
+  markArchived, 
+  registerDeviceToken, 
+  unmarkSubmitted,
+  unmarkArchived
+} from '../api';
+import {FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 function transformTask(apiTask) {
   const date = new Date(apiTask.due_date);  // עכשיו ISO string מהDB
@@ -23,7 +40,7 @@ function transformTask(apiTask) {
     dueDateDisplay,
     dueTimeDisplay,
     dueDateIso: date.toISOString(),
-    status: apiTask.is_submitted ? 'completed' : 'pending',
+    status: apiTask.computed_status,
     link: apiTask.link || '',
     submittedLate: false,
   };
@@ -31,7 +48,7 @@ function transformTask(apiTask) {
 
 export default function Dashboard({
   route, language, setLanguage, darkMode, toggleDarkMode,
-  notificationsSettings, setNotificationsSettings, t,
+  notificationsSettings, setNotificationsSettings,expoPushToken, t,accessToken,
 }) {
   const { username = '', access_token = '', refresh_token = '' } = route?.params || {};
   const navigation = useNavigation();
@@ -42,9 +59,10 @@ export default function Dashboard({
   const [tabBarWidth, setTabBarWidth] = useState(0);
   const isRTL = true
   const [scrollPadding, setScrollPadding] = useState(20);
-
   const [tasks, setTasks] = useState([]);
-  const pendingCount = tasks.filter(task => task.status === 'pending').length;
+  const [pendingCount, setPendingCount] = useState(0);
+
+
 
   // Tab indicator animation (0 = pending, 1 = completed)
   const indicatorAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +109,8 @@ export default function Dashboard({
     ).start();
   }, []);
 
+
+
   // Drawer slide-in animation
   const drawerAnim = useRef(new Animated.Value(-300)).current;
 
@@ -102,6 +122,16 @@ export default function Dashboard({
       stiffness: 200,
     }).start();
   }, [isMenuOpen]);
+
+  useEffect(() => {
+  if (expoPushToken && accessToken) {
+    registerDeviceToken(accessToken, expoPushToken)
+      .then(() => console.log("Device registered in DB!"))
+      .catch(err => console.error("Registration failed:", err));
+  }
+}, [expoPushToken, accessToken]);
+
+  
 
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
@@ -116,14 +146,31 @@ const scrollToCard = (taskId) => {
   }, 100); // מחכה שהמרווח יתרנדר ואז גולל
 };
 
-  useEffect(() => {
-    if (!access_token) { setIsLoading(false); return; }
-    setIsLoading(true);
-    fetchTasks(access_token)
-      .then(data => setTasks(data.map(transformTask)))
-      .catch(() => setTasks([]))
-      .finally(() => setIsLoading(false));
-  }, [access_token]);
+const loadData = async () => {
+  if (!access_token) return;
+  setIsLoading(true);
+  try {
+    const data = await fetchAllTasks(access_token);
+    setTasks(data.map(transformTask));
+    setPendingCount(data.filter(t => t.computed_status === 'pending').length);
+  } catch (error) {
+    setTasks([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+useEffect(() => {
+  loadData();
+}, []);
+
+useEffect(() => {
+  const subscription = Notifications.addNotificationReceivedListener(notification => {
+    loadData(); 
+  });
+  return () => subscription.remove();
+}, [access_token]);
+
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -136,21 +183,39 @@ const scrollToCard = (taskId) => {
     setGreeting(`${timeGreeting}, ${user}`);
   }, [language, t]);
 
-  const handleTaskAction = (action, taskId, payload = null) => {
-    setTasks(prev =>
-      prev.map(task => {
-        if (task.id !== taskId) return task;
-        if (action === 'markAsSubmitted') {
-          const isLateNow = new Date() > new Date(task.dueDateIso);
-          return { ...task, status: 'completed', submittedLate: isLateNow };
-        }
-        if (action === 'undoSubmit') return { ...task, status: 'pending', submittedLate: false };
-        if (action === 'moveToArchive') return { ...task, status: 'archive' };
-        if (action === 'updateNote') return { ...task, note: payload };
-        return task;
-      }).filter(task => !(action === 'delete' && task.id === taskId))
-    );
-  };
+  useEffect(() => {
+  // בדיקה ששני הנתונים קיימים
+  if (accessToken && expoPushToken) {
+    console.log(" Sending token to backend");
+    
+    registerDeviceToken(accessToken, expoPushToken)
+      .then(() => console.log(" Device registered in DB!"))
+      .catch(err => console.error(" Registration failed:", err));
+  }
+}, [accessToken, expoPushToken]); // ירוץ רק כשאחד מהם משתנה
+
+const handleTaskAction = async (action, taskId) => {
+  // 1. שמירת המצב הנוכחי למקרה של שגיאה
+  const previousTasks = [...tasks];
+
+  // 2. עדכון אופטימי - הסרת המטלה מהמסך מיד
+  setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
+
+  try {
+    // 3. שליחה לשרת ב-Background
+    if (action === 'markAsSubmitted') await markSubmitted(access_token, taskId);
+    else if (action === 'undoSubmit') await unmarkSubmitted(access_token, taskId);
+    else if (action === 'moveToArchive') await markArchived(access_token, taskId);
+    else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
+    
+    // רענון נתונים שקט כדי לוודא סנכרון
+    loadData(); 
+  } catch (error) {
+    // 4. אם נכשל - מחזירים את המצב לקדמותו
+    setTasks(previousTasks);
+    Alert.alert("אופס", "העדכון נכשל, מנסה לסנכרן מחדש...");
+  }
+};
 
   const filteredTasks = tasks.filter(task => task.status === activeTab);
 
@@ -423,6 +488,7 @@ const handleLogoutPress = () => {
           <View style={{ paddingHorizontal: 8 }}>
             <SettingsPage
               customBackAction={() => setActiveTab('pending')}
+              accessToken={accessToken}
               t={t}
               language={language}
               setLanguage={setLanguage}

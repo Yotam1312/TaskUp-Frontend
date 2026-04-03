@@ -102,17 +102,9 @@ const handleIconClick = () => {
     return '#4ade80';
   };
 
-  const handleDeleteClick = () => {
-    Alert.alert(
-      '',
-      t.warnings.deleteMsg,
-      [
-        { text: t.notes.close, style: 'cancel' },
-        { text: 'OK', style: 'destructive', onPress: () => onAction('delete', task.id) },
-      ]
-    );
-  };
-
+ const handleDeleteClick = () => {
+  onAction('unarchive', task.id);
+};
   const handleSubmitLink = () => {
     if (task.link) Linking.openURL(task.link);
   };

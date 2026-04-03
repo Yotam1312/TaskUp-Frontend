@@ -5,10 +5,24 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": ["**/*"],
-    "ios": { "supportsTablet": false },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.harel.taskup"
+    },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#4f46e5" }
-    }
+      "adaptiveIcon": {
+        "backgroundColor": "#4f46e5"
+      },
+      "package": "com.harel.taskup"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5846f7e2-210c-4346-b920-8bc32ab1c38a"
+      }
+    },
+    "owner": "harelcohen9"
   }
 }

@@ -1,30 +1,130 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { ArrowRight, ArrowLeft, Moon, Globe, Bell } from 'lucide-react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing } from 'react-native';
+import {
+  ArrowRight, ArrowLeft, Moon, Globe, Bell,
+  Check, RefreshCw, AlertCircle
+} from 'lucide-react-native';
+import { updateNotificationSettings } from '../api';
+
+const SaveStatus = ({ status, darkMode }) => {
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (status === 'saving') {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1, duration: 1000, easing: Easing.linear, useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.setValue(0);
+    }
+  }, [status]);
+
+  const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {status === 'saving' ? (
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <RefreshCw size={14} color="#4f46e5" />
+        </Animated.View>
+      ) : status === 'error' ? (
+        <AlertCircle size={14} color="#ef4444" />
+      ) : (
+        <Check size={16} color={darkMode ? '#10b981' : '#059669'} />
+      )}
+
+      <Text style={{
+        fontSize: 10,
+        fontWeight: '600',
+        color: status === 'error' ? '#ef4444' : (darkMode ? '#94a3b8' : '#64748b')
+      }}>
+        {status === 'saving' ? 'שומר...' : status === 'error' ? 'שגיאה' : ''}
+      </Text>
+    </View>
+  );
+};
+
+const mapOptionsToHours = (options) => {
+  const mapping = {
+    "7d": 168, "3d": 72, "2d": 48, "1d": 24,
+    "12h": 12, "8h": 8, "5h": 5, "1h": 1
+  };
+  return options.map(opt => mapping[opt]).filter(val => val !== undefined);
+};
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function SettingsPage({
-  darkMode, toggleDarkMode, language, setLanguage,
+  accessToken,darkMode, toggleDarkMode, language, setLanguage,
   notificationsSettings, setNotificationsSettings, t, customBackAction,
 }) {
   const isRTL = true;
-  const notificationOptions = ["3d", "2d", "1d", "12h", "8h", "4h", "2h", "1h"];
+  const notificationOptions = ["7d", "3d", "2d", "1d", "12h", "8h", "5h", "1h"];
+  const [saveStatus, setSaveStatus] = useState('idle');
+  const syncWithBackend = async (updatedSettings) => {
+  setSaveStatus('saving'); 
 
-  const handleDayToggle = (option) => {
-    if (!setNotificationsSettings) return;
-    setNotificationsSettings(prev => {
-      const cur = prev.daysBefore;
-      return {
-        ...prev,
-        daysBefore: cur.includes(option) ? cur.filter(d => d !== option) : [...cur, option],
-      };
+  // יצירת השהיה רנדומלית בין 1000ms ל-2000ms
+  const randomDelay = Math.floor(Math.random() * 1000) + 1000;
+  await sleep(randomDelay);
+
+  if (!accessToken) {
+    console.error("No Access Token found");
+    setSaveStatus('error');
+    return; 
+  }
+
+  try {
+    await updateNotificationSettings(accessToken, {
+        hours_before: mapOptionsToHours(updatedSettings.daysBefore || []),
+        notify_on_new: updatedSettings.newAssignment,
+        notify_on_change: updatedSettings.dateChange
     });
-  };
+    
+    setSaveStatus('saved');
+    
+    // החזרה למצב idle (או השארת ה-V) אחרי 2 שניות
+    setTimeout(() => setSaveStatus('idle'), 2000);
+    
+  } catch (err) {
+    console.error("Sync error:", err);
+    setSaveStatus('error');
+  }
+};
+  const handleDayToggle = (option) => {
+  if (!setNotificationsSettings) return;
+  
+  setNotificationsSettings(prev => {
+    const cur = prev.daysBefore || [];
+    const nextDays = cur.includes(option) 
+      ? cur.filter(d => d !== option) 
+      : [...cur, option];
+    
+    const next = { ...prev, daysBefore: nextDays };
+    
+    // הוסף את השורה הזו כאן!
+    console.log("Calling sync for daysBefore:", nextDays);
+    syncWithBackend(next); 
+    
+    return next;
+  });
+};
 
-  const handleToggleChange = (key, value) => {
-    if (setNotificationsSettings) setNotificationsSettings(prev => ({ ...prev, [key]: value }));
-  };
+const handleToggleChange = (key, value) => {
+  if (!setNotificationsSettings) return;
+  
+  setNotificationsSettings(prev => {
+    const next = { ...prev, [key]: value };
+    console.log("Calling sync for:", key, value);
+    syncWithBackend(next); 
+    
+    return next;
+  });
+};
 
-  const cardBg = darkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)';
+  const cardBg = darkMode ? 'rgba(15,23,42,0.6)' : 'rgba(255, 255, 255, 0.58)';
   const cardBorder = darkMode ? '#1e293b' : 'rgba(255,255,255,0.4)';
   const textPrimary = darkMode ? '#e2e8f0' : '#334155';
   const textSecondary = darkMode ? '#64748b' : '#94a3b8';
@@ -46,7 +146,7 @@ export default function SettingsPage({
 
   return (
     <ScrollView
-      style={{ flex: 0}}
+      style={{ flex: 0 }}
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       showsVerticalScrollIndicator={false}
     >
@@ -159,16 +259,36 @@ export default function SettingsPage({
 
         {/* Notifications section */}
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-              {t.settings.notifications}
-            </Text>
-            <Bell size={14} color={textSecondary} />
-          </View>
+          <View style={{
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between', // דוחף את שני הצדדים לקצוות
+            marginBottom: 16
+          }}>
+            {/* צד ימין (או שמאל ב-LTR): טקסט + פעמון */}
+            <View style={{
+              flexDirection: isRTL ? 'row-reverse' : 'row',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <Text style={{
+                fontSize: 11, fontWeight: '700', color: textSecondary,
+                textTransform: 'uppercase', letterSpacing: 1.2
+              }}>
+                {t.settings.notifications}
+              </Text>
+              <Bell size={14} color={textSecondary} />
+            </View>
 
+            {/* צד שמאל: סטטוס השמירה */}
+            <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+              <SaveStatus status={saveStatus} darkMode={darkMode} />
+            </View>
+          </View>
           <Text style={{ fontSize: 14, color: darkMode ? '#64748b' : '#64748b', marginBottom: 16, textAlign: isRTL ? 'right' : 'left' }}>
             {t.settings.notifyLabel}
           </Text>
+
 
           {/* Time chips grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
@@ -225,7 +345,6 @@ export default function SettingsPage({
             ))}
           </View>
         </View>
-
       </View>
     </ScrollView>
   );
@@ -233,7 +352,7 @@ export default function SettingsPage({
 
 const styles = StyleSheet.create({
   card: {
-    padding: 20,
+    padding: 15,
     borderRadius: 24,
     borderWidth: 1,
     shadowColor: '#000',
@@ -260,3 +379,4 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 });
+

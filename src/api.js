@@ -70,3 +70,106 @@ export async function logoutUser(refreshToken) {
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
 }
+
+/**
+ * Registers the Expo Push Token with the backend.
+ */
+export async function registerDeviceToken(accessToken, token) {
+  const res = await fetch(`${BASE_URL}/api/notifications/register-device`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw new Error('Failed to register device token');
+  return res.json();
+}
+
+/**
+ * Update notification settings for the user.
+ */
+export async function updateNotificationSettings(accessToken, settings) {
+  console.log("📡 Attempting fetch to:", `${BASE_URL}/api/notifications/settings`);
+  console.log("📦 Payload:", JSON.stringify(settings));
+  const res = await fetch(`${BASE_URL}/api/notifications/settings`, {
+    method: 'POST', // או PUT, לפי מה שתגדיר ב-Backend
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) throw new Error('Failed to update settings');
+  return res.json();
+}
+
+/**
+ * Fetch all submitted tasks that are not yet archived.
+ */
+export async function fetchSubmittedTasks(accessToken) {
+  const res = await fetch(`${BASE_URL}/api/assignments/submitted`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch submitted tasks');
+  return res.json();
+}
+
+/**
+ * Fetch all archived tasks (manual + auto-expired).
+ */
+export async function fetchArchivedTasks(accessToken) {
+  const res = await fetch(`${BASE_URL}/api/assignments/archived`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch archived tasks');
+  return res.json();
+}
+
+/**
+ * Unmark an assignment as submitted.
+ */
+export async function unmarkSubmitted(accessToken, assignmentId) {
+  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/unsubmit`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to unmark as submitted');
+  return res.json();
+}
+
+export async function fetchAllTasks(accessToken) {
+  const res = await fetch(`${BASE_URL}/api/assignments/all`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch all tasks');
+  return res.json();
+}
+
+export async function unmarkArchived(accessToken, assignmentId) {
+  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/unarchive`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to unarchive');
+  return res.json();
+}

@@ -10,7 +10,7 @@ import { User, Lock, ArrowLeft, ArrowRight, Layers, GraduationCap, Sparkles, Eye
 import { LinearGradient } from 'expo-linear-gradient';
 
 
-export default function LoginPage({ language, setLanguage, t, darkMode }) {
+export default function LoginPage({ language, setLanguage, t, darkMode,setAccessToken }) {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
@@ -26,6 +26,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
     setLoginError('');
     try {
       const { name, access_token, refresh_token } = await loginUser(username.trim(), password);
+      setAccessToken(access_token);
       navigation.navigate('Dashboard', {
         username: name,
         access_token,
@@ -100,19 +101,18 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
             elevation: 10,
           }}>
 
-            {/* Logo with float animation */}
             {/* Logo */}
             <View style={{ alignItems: 'center', justifyContent: 'center', width: 120, height: 120, marginBottom: 10 }}>
-              
+
               {/* הילה אחורית עדינה */}
-              <View style={{ 
-                position: 'absolute', 
-                width: 100, 
-                height: 100, 
-                borderRadius: 50, 
-                backgroundColor: '#4f46e5', 
-                opacity: 0.1, 
-                zIndex: -1 
+              <View style={{
+                position: 'absolute',
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: '#4f46e5',
+                opacity: 0.1,
+                zIndex: -1
               }} />
 
               {/* הטבעת הכחולה (Indigo) */}
@@ -149,13 +149,17 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
                 borderBottomWidth: 10,
                 borderRightWidth: 10,
                 borderRadius: 3,
-                borderColor: '#30b21a',
+                borderColor: '#2c9718',
+                shadowColor: '#000000',
+                shadowOffset: { width: 1, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 2,
                 transform: [{ rotate: '40deg' }],
                 top: 30,
                 left: 50
               }} />
-              
             </View>
+
             {/* Title */}
             {/* Title Section */}
             <View style={{ alignItems: 'center', marginBottom: 32 }}>
@@ -167,7 +171,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode }) {
               }}>
                 {/* צבע סגול מותגי */}
                 <Text style={{ color: '#4f46e5' }}>My</Text>
-                <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>Tasks</Text>
+                <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>Task</Text>
               </Text>
 
               {/* הסלוגן המתורגם */}
