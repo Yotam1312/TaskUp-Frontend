@@ -21,7 +21,7 @@ function ScaleButton({ onPress, style, textStyle, label, disabled = false }) {
 }
 
 
-export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,onNoteOpen,onNoteClose }) {
+export default function TaskCard({ task, type, onAction, t, darkMode, index = 0, onNoteOpen, onNoteClose }) {
   const [timeLeftString, setTimeLeftString] = useState("");
   const [activeScrollIndex, setActiveScrollIndex] = useState(0);
   const scrollRef = useRef(null);
@@ -50,13 +50,13 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
     if (onNoteClose) onNoteClose()
   };
 
-const handleIconClick = () => {
+  const handleIconClick = () => {
     if (noteMode !== 'closed') {
       handleClose();
     } else {
       // 1. מפעילים את הגלילה למעלה
       if (onNoteOpen) onNoteOpen();
-      
+
       // 2. מחכים שהגלילה תסתיים (400 מילישניות)
       setTimeout(() => {
         // 3. מודדים את המיקום החדש של הכפתור (עכשיו הוא אמור להיות למעלה)
@@ -102,9 +102,9 @@ const handleIconClick = () => {
     return '#4ade80';
   };
 
- const handleDeleteClick = () => {
-  onAction('unarchive', task.id);
-};
+  const handleDeleteClick = () => {
+    onAction('unarchive', task.id);
+  };
   const handleSubmitLink = () => {
     if (task.link) Linking.openURL(task.link);
   };
@@ -158,52 +158,57 @@ const handleIconClick = () => {
           elevation: 2,
         }}
       >
-        
+
         {/* Right buttons */}
         <View style={{ gap: 10, width: 100, marginTop: 8, alignItems: 'center' }}>
+
+          {/* טאב לביצוע */}
           {type === 'pending' && (
             <>
-              <ScaleButton
-                onPress={handleSubmitLink}
-                style={[styles.actionBtn, { borderColor: btnBorder }]}
-                textStyle={{ fontSize: 13, fontWeight: '700', color: btnText, textAlign: 'center' }}
-                label={t.buttons.submit}
-              />
+
               <ScaleButton
                 onPress={() => onAction('markAsSubmitted', task.id)}
                 style={[styles.actionBtn, { borderColor: btnBorder }]}
                 textStyle={{ fontSize: 13, fontWeight: '700', color: btnText, textAlign: 'center' }}
                 label={t.buttons.markAsSubmitted}
               />
+              <ScaleButton
+                onPress={handleSubmitLink}
+                style={[styles.actionBtn, { borderColor: btnBorder }]}
+                textStyle={{ fontSize: 13, fontWeight: '700', color: btnText, textAlign: 'center' }}
+                label={t.buttons.submit}
+              />
             </>
           )}
 
+          {/* טאב הושלמו */}
           {type === 'completed' && (
             <>
               <ScaleButton
                 onPress={() => onAction('undoSubmit', task.id)}
-                style={[styles.actionBtn, { borderColor: btnBorder }]}
-                textStyle={{ fontSize: 11, fontWeight: '700', color: btnText, textAlign: 'center' }}
+              style={[styles.actionBtn, { borderColor: btnBorder }]}
+                textStyle={{ fontSize: 12, fontWeight: '700', color: btnText, textAlign: 'center' }}
                 label={t.buttons.undoSubmit}
               />
               <ScaleButton
                 onPress={() => onAction('moveToArchive', task.id)}
-                disabled={!overdue && !task.submittedLate}
+                disabled={!overdue && !task.isSubmittedLate}
                 style={[styles.actionBtn, {
-                  borderColor: (!overdue && !task.submittedLate) ? (darkMode ? '#334155' : '#cbd5e1') : btnBorder,
-                  opacity: (!overdue && !task.submittedLate) ? 0.5 : 1,
+                  borderColor: (!overdue && !task.isSubmittedLate) ? (darkMode ? '#334155' : '#cbd5e1') : btnBorder,
+                  opacity: (!overdue && !task.isSubmittedLate) ? 0.5 : 1,
                 }]}
-                textStyle={{ fontSize: 11, fontWeight: '700', color: (!overdue && !task.submittedLate) ? '#94a3b8' : btnText, textAlign: 'center' }}
+                textStyle={{ fontSize: 12, fontWeight: '700', color: (!overdue && !task.isSubmittedLate) ? '#94a3b8' : btnText, textAlign: 'center' }}
                 label={t.buttons.moveToArchive}
               />
             </>
           )}
 
-          {type === 'archive' && (
+          {/* טאב ארכיון - כפתור החזרה מופיע רק אם הקורס לא פג תוקף */}
+          {type === 'archive' && !task.isCourseExpired && (
             <ScaleButton
               onPress={handleDeleteClick}
-              style={[styles.actionBtn, { borderColor: btnBorder }]}
-              textStyle={{ fontSize: 11, fontWeight: '700', color: btnText, textAlign: 'center' }}
+                style={[styles.actionBtn, { borderColor: btnBorder }]}
+                textStyle={{ fontSize: 12, fontWeight: '700', color: btnText, textAlign: 'center' }}
               label={t.buttons.removeFromArchive}
             />
           )}
@@ -260,10 +265,10 @@ const handleIconClick = () => {
           )}
 
           {/* Submitted late badge */}
-          {(type === 'completed' || type === 'archive') && task.submittedLate && (
+          {(type === 'completed' || type === 'archive') && task.isSubmittedLate && (
             <View style={[styles.badge, { backgroundColor: darkMode ? 'rgba(239,68,68,0.2)' : '#fee2e2', marginBottom: 8, marginRight: 20 }]}>
-              <AlertTriangle size={10} color="#ef4444" />
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#ef4444' }}>{t.tasks.submittedLate}</Text>
+              <AlertTriangle size={10} color="#ef4444" />
             </View>
           )}
 
@@ -500,7 +505,7 @@ const handleIconClick = () => {
             />
 
             {/* Bottom bar */}
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 12,  }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 12, }}>
               <Text style={{ fontSize: 1, fontWeight: '700', color: tempNote.length === 50 ? '#ef4444' : 'transparent' }}>
                 {t.notes.limitWarning}
               </Text>

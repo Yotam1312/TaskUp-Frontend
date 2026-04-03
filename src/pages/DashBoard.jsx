@@ -21,6 +21,7 @@ import {
   syncAssignments
 } from '../api';
 import {FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { MotiView, AnimatePresence } from 'moti';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -31,10 +32,11 @@ Notifications.setNotificationHandler({
 });
 
 function transformTask(apiTask) {
-  const date = new Date(apiTask.due_date);  // עכשיו ISO string מהDB
+  const date = new Date(apiTask.due_date);
   const pad = (n) => n.toString().padStart(2, '0');
   const dueDateDisplay = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
   const dueTimeDisplay = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  
   return {
     id: apiTask.id,
     title: apiTask.title,
@@ -42,7 +44,7 @@ function transformTask(apiTask) {
     dueDateDisplay,
     dueTimeDisplay,
     dueDateIso: date.toISOString(),
-    status: apiTask.computed_status,
+    status: apiTask.computed_status || (apiTask.is_submitted ? 'completed' : 'pending'),
     link: apiTask.link || '',
     isSubmittedLate: apiTask.is_submitted_late || false,
     isCourseExpired: apiTask.is_course_expired || false,

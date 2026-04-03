@@ -10,7 +10,7 @@ import { User, Lock, ArrowLeft, ArrowRight, Layers, GraduationCap, Sparkles, Eye
 import { LinearGradient } from 'expo-linear-gradient';
 
 
-export default function LoginPage({ language, setLanguage, t, darkMode,setAccessToken }) {
+export default function LoginPage({ language, setLanguage, t, darkMode, setAccessToken }) {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
@@ -215,7 +215,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode,setAccess
               </View>
             </MotiView>
 
-            {/* Password Field */}
+{/* Password Field */}
             <MotiView
               animate={{ scale: focusedField === 'pass' ? 1.01 : 1 }}
               transition={{ type: 'spring', damping: 20, stiffness: 200 }}
@@ -240,34 +240,46 @@ export default function LoginPage({ language, setLanguage, t, darkMode,setAccess
                   style={[styles.input, {
                     color: textColor,
                     textAlign: isRTL ? 'right' : 'left',
-                    paddingRight: isRTL ? 44 : 8,
-                    paddingLeft: isRTL ? 8 : 44,
+                    // התיקון כאן: הריפוד הגדול (44) ניתן תמיד בצד של העין
+                    paddingRight: isRTL ? 8 : 44,
+                    paddingLeft: isRTL ? 44 : 8,
                   }]}
                   onFocus={() => setFocusedField('pass')}
                   onBlur={() => setFocusedField(null)}
                 />
-                {/* Eye button - hold to reveal */}
+                
+                {/* Eye button - Toggle to reveal */}
                 <TouchableOpacity
-                  onPressIn={() => setShowPassword(true)}
-                  onPressOut={() => setShowPassword(false)}
-                  style={[styles.eyeBtn, isRTL ? { left: 8 } : { right: 8 }]}
-                  activeOpacity={1}
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={[
+                    styles.eyeBtn,
+                    isRTL ? { left: 8 } : { right: 8 },
+                    {
+                      position: 'absolute',
+                      height: '100%',
+                      width: 40, 
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 10
+                    }
+                  ]}
+                  activeOpacity={0.7}
                 >
-                  <AnimatePresence>
+                  <MotiView
+                    key={showPassword ? "eye-open" : "eye-closed"}
+                    from={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'timing', duration: 100 }}
+                  >
                     {showPassword ? (
-                      <MotiView key="eye-open" from={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ type: 'timing', duration: 150 }}>
-                        <Eye size={20} color={iconColor} />
-                      </MotiView>
+                      <Eye size={20} color={focusedField === 'pass' ? focusedIconColor : iconColor} />
                     ) : (
-                      <MotiView key="eye-closed" from={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ type: 'timing', duration: 150 }}>
-                        <EyeOff size={20} color={iconColor} />
-                      </MotiView>
+                      <EyeOff size={20} color={focusedField === 'pass' ? focusedIconColor : iconColor} />
                     )}
-                  </AnimatePresence>
+                  </MotiView>
                 </TouchableOpacity>
               </View>
             </MotiView>
-
             {/* Login Button */}
             <TouchableOpacity
               onPress={handleLogin}
