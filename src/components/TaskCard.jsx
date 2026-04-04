@@ -46,7 +46,8 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
 
   const handleClose = () => {
     setNoteMode('closed');
-    onAction('updateNote', task.id, tempNote);
+    // On close, ask parent to do an immediate final save (not debounced).
+    onAction('saveNoteOnClose', task.id, tempNote);
     if (onNoteClose) onNoteClose()
   };
 

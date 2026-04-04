@@ -162,6 +162,27 @@ export async function fetchAllTasks(accessToken) {
   return res.json();
 }
 
+// Persist assignment note to backend (empty note is stored as null).
+export async function updateAssignmentNote(accessToken, assignmentId, note) {
+  const response = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/note`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      note: note && note.trim().length > 0 ? note : null,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update note');
+  }
+
+  return response.json();
+}
+
 export async function unmarkArchived(accessToken, assignmentId) {
   const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/unarchive`, {
     method: 'PATCH',

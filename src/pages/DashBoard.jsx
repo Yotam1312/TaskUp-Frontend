@@ -18,7 +18,8 @@ import {
   unmarkSubmitted,
   unmarkArchived,
   fetchNotificationSettings,
-  syncAssignments
+  syncAssignments,
+  updateAssignmentNote
 } from '../api';
 import {FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
@@ -46,6 +47,8 @@ function transformTask(apiTask) {
     dueDateIso: date.toISOString(),
     status: apiTask.computed_status || (apiTask.is_submitted ? 'completed' : 'pending'),
     link: apiTask.link || '',
+    // Keep note in UI model so TaskCard always receives latest backend value.
+    note: apiTask.note || '',
     isSubmittedLate: apiTask.is_submitted_late || false,
     isCourseExpired: apiTask.is_course_expired || false,
   };
@@ -141,6 +144,37 @@ export default function Dashboard({
 
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
+  // One debounce timer per assignment id for smooth note autosave.
+  const noteSaveTimers = useRef({});
+  // Support whichever token source is currently populated in this screen.
+  const tokenForNotes = accessToken || access_token;
+
+  // Save note immediately to backend (used on note close).
+  const saveNoteNow = async (assignmentId, note) => {
+    if (!tokenForNotes) return;
+    await updateAssignmentNote(tokenForNotes, assignmentId, note);
+  };
+
+  // Debounced autosave while user types to avoid spamming requests.
+  const scheduleNoteSave = (assignmentId, note) => {
+    const prev = noteSaveTimers.current[assignmentId];
+    if (prev) clearTimeout(prev);
+
+    noteSaveTimers.current[assignmentId] = setTimeout(async () => {
+      try {
+        await saveNoteNow(assignmentId, note);
+      } catch (e) {
+        console.error('Autosave failed', e);
+      }
+    }, 700);
+  };
+
+  // Clear pending timers when screen unmounts.
+  useEffect(() => {
+    return () => {
+      Object.values(noteSaveTimers.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
 const scrollToCard = (taskId) => {
   setScrollPadding(400); // מוסיף את המרווח
@@ -248,24 +282,42 @@ useEffect(() => {
   }
 }, [accessToken, expoPushToken]); // ירוץ רק כשאחד מהם משתנה
 
-const handleTaskAction = async (action, taskId) => {
-  // 1. שמירת המצב הנוכחי למקרה של שגיאה
-  const previousTasks = [...tasks];
+const handleTaskAction = async (action, taskId, payload) => {
+  if (action === 'updateNote') {
+    // Reflect note typing immediately in UI for instant feedback.
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => (task.id === taskId ? { ...task, note: payload } : task))
+    );
+    // Save in background with debounce while user types.
+    scheduleNoteSave(taskId, payload);
+    return;
+  }
 
-  // 2. עדכון אופטימי - הסרת המטלה מהמסך מיד
+  if (action === 'saveNoteOnClose') {
+    // Flush pending debounce and do one final save on close.
+    const prev = noteSaveTimers.current[taskId];
+    if (prev) clearTimeout(prev);
+
+    try {
+      await saveNoteNow(taskId, payload);
+      await refreshLocalData();
+    } catch (e) {
+      console.error('Close-save failed', e);
+    }
+    return;
+  }
+
+  // Keep existing optimistic behavior for submit/archive actions.
+  const previousTasks = [...tasks];
   setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
 
   try {
-    // 3. שליחה לשרת ב-Background
     if (action === 'markAsSubmitted') await markSubmitted(access_token, taskId);
     else if (action === 'undoSubmit') await unmarkSubmitted(access_token, taskId);
     else if (action === 'moveToArchive') await markArchived(access_token, taskId);
     else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
-    
-    // רענון נתונים שקט כדי לוודא סנכרון
     refreshLocalData();
   } catch (error) {
-    // 4. אם נכשל - מחזירים את המצב לקדמותו
     setTasks(previousTasks);
     Alert.alert("אופס", "העדכון נכשל, מנסה לסנכרן מחדש...");
   }
