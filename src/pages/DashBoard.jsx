@@ -690,89 +690,96 @@ const handleLogoutPress = () => {
       {isHelpModalOpen && (
         <>
           <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 60 }]}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 60 }]}
             onPress={() => setIsHelpModalOpen(false)}
           />
 
           <View
             style={{
               position: 'absolute',
-              top: '18%',
-              left: 20,
-              right: 20,
-              maxHeight: '64%',
-              backgroundColor: darkMode ? 'rgba(15,23,42,0.98)' : 'rgba(255,255,255,0.98)',
-              borderRadius: 18,
-              padding: 16,
+              top: '20%',
+              left: 24,
+              right: 24,
+              maxHeight: '60%',
+              backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+              borderRadius: 24,
+              padding: 24,
               zIndex: 61,
-              borderWidth: 1,
-              borderColor: darkMode ? '#334155' : '#e2e8f0',
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.25,
-              shadowRadius: 14,
-              elevation: 30,
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              elevation: 10,
+              borderWidth: 1,
+              borderColor: darkMode ? '#334155' : '#f1f5f9',
             }}
           >
-            <View
+            {/* Centered title */}
+            <Text
               style={{
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 12,
+                color: darkMode ? '#f8fafc' : '#0f172a',
+                fontSize: 22,
+                fontWeight: '800',
+                marginBottom: 20,
+                textAlign: 'center',
               }}
             >
-              <Text
-                style={{
-                  color: darkMode ? '#f8fafc' : '#0f172a',
-                  fontSize: 18,
-                  fontWeight: '700',
-                  flex: 1,
-                  textAlign: isRTL ? 'right' : 'left',
-                }}
-              >
-                {t.helpModal.title}
-              </Text>
+              {t.helpModal.title}
+            </Text>
 
-              <TouchableOpacity
-                onPress={() => setIsHelpModalOpen(false)}
-                style={{ padding: 6, marginLeft: isRTL ? 0 : 8, marginRight: isRTL ? 8 : 0 }}
-                activeOpacity={0.7}
-              >
-                <X size={20} color={menuTextColor} />
-              </TouchableOpacity>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+              {t.helpModal.body.split('\n').map((line, idx) => {
+                if (!line.trim()) return null;
+                const isHeader = /^.+:\s*$/.test(line.trim());
 
-            <ScrollView showsVerticalScrollIndicator={true}>
-              {t.helpModal.body.split('\n').map((line, idx) => (
-                <Text
-                  key={idx}
-                  style={{
-                    color: darkMode ? '#cbd5e1' : '#334155',
-                    fontSize: 14,
-                    lineHeight: 22,
-                    marginBottom: 6,
-                    textAlign: isRTL ? 'right' : 'left',
-                  }}
-                >
-                  {line}
-                </Text>
-              ))}
+                return (
+                  <View key={idx} style={{
+                    marginBottom: 16,
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    alignItems: 'flex-start'
+                  }}>
+                    <View style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: '#4f46e5',
+                      marginTop: 8,
+                      marginHorizontal: 10,
+                    }} />
+
+                    <Text
+                      style={{
+                        color: darkMode ? '#cbd5e1' : '#475569',
+                        fontSize: 15,
+                        lineHeight: 22,
+                        flex: 1,
+                        textAlign: isRTL ? 'right' : 'left',
+                        fontWeight: isHeader ? '700' : '400',
+                      }}
+                    >
+                      {line}
+                    </Text>
+                  </View>
+                );
+              })}
             </ScrollView>
 
             <TouchableOpacity
               onPress={() => setIsHelpModalOpen(false)}
               style={{
-                marginTop: 14,
-                alignSelf: isRTL ? 'flex-start' : 'flex-end',
+                marginTop: 20,
                 backgroundColor: '#4f46e5',
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 10,
+                paddingVertical: 14,
+                borderRadius: 16,
+                alignItems: 'center',
+                shadowColor: '#4f46e5',
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 4 },
               }}
               activeOpacity={0.8}
             >
-              <Text style={{ color: 'white', fontWeight: '700' }}>
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
                 {t.helpModal.close}
               </Text>
             </TouchableOpacity>
