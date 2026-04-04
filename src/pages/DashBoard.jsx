@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
   StyleSheet, Pressable,
 } from 'react-native';
-import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
@@ -65,7 +65,7 @@ export default function Dashboard({
   const [tasks, setTasks] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedCourses, setExpandedCourses] = useState({});
-
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
 
   // Tab indicator animation (0 = pending, 1 = completed)
@@ -629,38 +629,154 @@ const handleLogoutPress = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={{ gap: 8 }}>
-          {[
-            { tab: 'pending', icon: ClipboardList, label: t.menu.tasks, isActive: activeTab === 'pending' || activeTab === 'completed' },
-            { tab: 'archive', icon: Archive, label: t.menu.archive, isActive: activeTab === 'archive' },
-            { tab: 'settings', icon: Settings, label: t.menu.settings, isActive: activeTab === 'settings' },
-          ].map(({ tab, icon: Icon, label, isActive }) => (
+        <View style={{ flex: 1 }}>
+          <View style={{ gap: 8 }}>
+            {[
+              { tab: 'pending', icon: ClipboardList, label: t.menu.tasks, isActive: activeTab === 'pending' || activeTab === 'completed' },
+              { tab: 'archive', icon: Archive, label: t.menu.archive, isActive: activeTab === 'archive' },
+              { tab: 'settings', icon: Settings, label: t.menu.settings, isActive: activeTab === 'settings' },
+            ].map(({ tab, icon: Icon, label, isActive }) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => handleTabChange(tab)}
+                style={[styles.menuItem, {
+                  backgroundColor: isActive ? activeMenuBg : 'transparent',
+                  flexDirection: isRTL ? 'row-reverse' : 'row',
+                }]}
+                activeOpacity={0.7}
+              >
+                <Icon size={20} color={isActive ? '#4f46e5' : menuTextColor} />
+                <Text style={[styles.menuText, { color: isActive ? '#4f46e5' : menuTextColor }]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+
+            <View style={{ height: 1, backgroundColor: darkMode ? '#1e293b' : '#f1f5f9', marginVertical: 8 }} />
+
             <TouchableOpacity
-              key={tab}
-              onPress={() => handleTabChange(tab)}
-              style={[styles.menuItem, {
-                backgroundColor: isActive ? activeMenuBg : 'transparent',
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-              }]}
+              onPress={() => handleLogoutPress()}
+              style={[styles.menuItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
               activeOpacity={0.7}
             >
-              <Icon size={20} color={isActive ? '#4f46e5' : menuTextColor} />
-              <Text style={[styles.menuText, { color: isActive ? '#4f46e5' : menuTextColor }]}>{label}</Text>
+              <LogOut size={20} color="#ef4444" />
+              <Text style={[styles.menuText, { color: '#ef4444' }]}>{t.menu.logout}</Text>
             </TouchableOpacity>
-          ))}
+          </View>
 
-          <View style={{ height: 1, backgroundColor: darkMode ? '#1e293b' : '#f1f5f9', marginVertical: 8 }} />
-
-          <TouchableOpacity
-            onPress={() => handleLogoutPress()}
-            style={[styles.menuItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-            activeOpacity={0.7}
-          >
-            <LogOut size={20} color="#ef4444" />
-            <Text style={[styles.menuText, { color: '#ef4444' }]}>{t.menu.logout}</Text>
-          </TouchableOpacity>
+          <View style={{ marginTop: 'auto', paddingTop: 14, borderTopWidth: 1, borderTopColor: darkMode ? '#1e293b' : '#f1f5f9' }}>
+            <TouchableOpacity
+              onPress={() => {
+                setIsMenuOpen(false);
+                setTimeout(() => setIsHelpModalOpen(true), 180);
+              }}
+              style={[
+                styles.menuItem,
+                {
+                  alignSelf: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 10,
+                  paddingVertical: 10,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <HelpCircle size={22} color={menuTextColor} />
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
+
+      {isHelpModalOpen && (
+        <>
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 60 }]}
+            onPress={() => setIsHelpModalOpen(false)}
+          />
+
+          <View
+            style={{
+              position: 'absolute',
+              top: '18%',
+              left: 20,
+              right: 20,
+              maxHeight: '64%',
+              backgroundColor: darkMode ? 'rgba(15,23,42,0.98)' : 'rgba(255,255,255,0.98)',
+              borderRadius: 18,
+              padding: 16,
+              zIndex: 61,
+              borderWidth: 1,
+              borderColor: darkMode ? '#334155' : '#e2e8f0',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25,
+              shadowRadius: 14,
+              elevation: 30,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: isRTL ? 'row-reverse' : 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: darkMode ? '#f8fafc' : '#0f172a',
+                  fontSize: 18,
+                  fontWeight: '700',
+                  flex: 1,
+                  textAlign: isRTL ? 'right' : 'left',
+                }}
+              >
+                {t.helpModal.title}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => setIsHelpModalOpen(false)}
+                style={{ padding: 6, marginLeft: isRTL ? 0 : 8, marginRight: isRTL ? 8 : 0 }}
+                activeOpacity={0.7}
+              >
+                <X size={20} color={menuTextColor} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={true}>
+              {t.helpModal.body.split('\n').map((line, idx) => (
+                <Text
+                  key={idx}
+                  style={{
+                    color: darkMode ? '#cbd5e1' : '#334155',
+                    fontSize: 14,
+                    lineHeight: 22,
+                    marginBottom: 6,
+                    textAlign: isRTL ? 'right' : 'left',
+                  }}
+                >
+                  {line}
+                </Text>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setIsHelpModalOpen(false)}
+              style={{
+                marginTop: 14,
+                alignSelf: isRTL ? 'flex-start' : 'flex-end',
+                backgroundColor: '#4f46e5',
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 10,
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: 'white', fontWeight: '700' }}>
+                {t.helpModal.close}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View >
   );
 }

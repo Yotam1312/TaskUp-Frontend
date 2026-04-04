@@ -50,6 +50,11 @@ export const translations = {
             logout: "התנתק",
             logoutConfirm: "האם אתה בטוח שברצונך להתנתק?"
         },
+        helpModal: {
+            title: "עזרה והוראות שימוש",
+            close: "סגור",
+            body: "ניהול מטלות:\n\nלביצוע: כאן תמצאו את כל המטלות הפתוחות. מטלות שפג מועדן יסומנו באדום כ\"באיחור\".\n\nהושלמו: לאחר הגשה , המטלה תעבור לכאן באופן אוטומטי.\n\nארכיון: כאן נמצאות מטלות מסמסטרים קודמים. ניתן להעביר מטלות מהטאב \"הושלמו\" לארכיון באופן ידני.\n\nהתראות:\nבתפריט ההגדרות תוכלו להגדיר תזכורות מותאמות אישית לפני מועד ההגשה.\n\nדיווח על תקלות:\nנתקלתם בבעיה? שלחו לנו מייל לכתובת: Support@MyTask.com"
+        },
         settings: {
             title: "הגדרות",
             general: "כללי",
@@ -127,6 +132,11 @@ export const translations = {
             settings: "Settings",
             logout: "Logout",
             logoutConfirm: "Are you sure you want to logout?"
+        },
+        helpModal: {
+            title: "Help & Usage Instructions",
+            close: "Close",
+            body: "Task Management:\n\nPending: Here you will find all your open assignments. Overdue tasks will be marked in red as \"Late\".\n\nCompleted: Once submitted, assignments will automatically move to this tab.\n\nArchive: This section contains assignments from previous semesters. You can manually move tasks from the \"Completed\" tab to the Archive.\n\nNotifications:\nIn the Settings menu, you can customize reminders to be sent before your submission deadlines.\n\nSupport:\nEncountered an issue? Email us at: Support@MyTask.com"
         },
         settings: {
             title: "Settings",
