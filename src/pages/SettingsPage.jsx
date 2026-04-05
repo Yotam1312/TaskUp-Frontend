@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import {
   ArrowRight, ArrowLeft, Moon, Globe, Bell,
   Check, RefreshCw, AlertCircle
@@ -66,7 +66,6 @@ export default function SettingsPage({
   const syncWithBackend = async (updatedSettings) => {
   setSaveStatus('saving'); 
 
-  // יצירת השהיה רנדומלית בין 1000ms ל-2000ms
   const randomDelay = Math.floor(Math.random() * 1000) + 1000;
   await sleep(randomDelay);
 
@@ -85,7 +84,6 @@ export default function SettingsPage({
     
     setSaveStatus('saved');
     
-    // החזרה למצב idle (או השארת ה-V) אחרי 2 שניות
     setTimeout(() => setSaveStatus('idle'), 2000);
     
   } catch (err) {
@@ -104,7 +102,6 @@ export default function SettingsPage({
     
     const next = { ...prev, daysBefore: nextDays };
     
-    // הוסף את השורה הזו כאן!
     console.log("Calling sync for daysBefore:", nextDays);
     syncWithBackend(next); 
     
@@ -130,7 +127,6 @@ const handleToggleChange = (key, value) => {
   const textSecondary = darkMode ? '#64748b' : '#94a3b8';
   const dividerColor = darkMode ? 'rgba(30,41,59,0.5)' : 'rgba(226,232,240,0.5)';
 
-  // Custom toggle switch
   const ToggleSwitch = ({ checked, onChange }) => (
     <TouchableOpacity
       onPress={() => onChange(!checked)}
@@ -150,7 +146,6 @@ const handleToggleChange = (key, value) => {
       contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Back button */}
       {customBackAction && (
         <View style={{
           flexDirection: isRTL ? 'row-reverse' : 'row',
@@ -178,13 +173,11 @@ const handleToggleChange = (key, value) => {
 
       <View style={{ gap: 24 }}>
 
-        {/* General section */}
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16, textAlign: isRTL ? 'right' : 'left' }}>
             {t.settings.general}
           </Text>
 
-          {/* Dark Mode */}
           <View style={{
             flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center', justifyContent: 'space-between',
@@ -200,7 +193,6 @@ const handleToggleChange = (key, value) => {
               </Text>
             </View>
 
-            {/* Custom toggle for dark mode */}
             <TouchableOpacity
               onPress={toggleDarkMode}
               activeOpacity={0.8}
@@ -210,7 +202,6 @@ const handleToggleChange = (key, value) => {
             </TouchableOpacity>
           </View>
 
-          {/* Language */}
           <View style={{
             flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center', justifyContent: 'space-between',
@@ -257,15 +248,13 @@ const handleToggleChange = (key, value) => {
           </View>
         </View>
 
-        {/* Notifications section */}
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           <View style={{
             flexDirection: isRTL ? 'row-reverse' : 'row',
             alignItems: 'center',
-            justifyContent: 'space-between', // דוחף את שני הצדדים לקצוות
+            justifyContent: 'space-between',
             marginBottom: 16
           }}>
-            {/* צד ימין (או שמאל ב-LTR): טקסט + פעמון */}
             <View style={{
               flexDirection: isRTL ? 'row-reverse' : 'row',
               alignItems: 'center',
@@ -280,7 +269,6 @@ const handleToggleChange = (key, value) => {
               <Bell size={14} color={textSecondary} />
             </View>
 
-            {/* צד שמאל: סטטוס השמירה */}
             <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
               <SaveStatus status={saveStatus} darkMode={darkMode} />
             </View>
@@ -289,8 +277,6 @@ const handleToggleChange = (key, value) => {
             {t.settings.notifyLabel}
           </Text>
 
-
-          {/* Time chips grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
             {notificationOptions.map((option) => {
               const isSelected = notificationsSettings?.daysBefore?.includes(option);
@@ -324,7 +310,6 @@ const handleToggleChange = (key, value) => {
             })}
           </View>
 
-          {/* Toggle rows */}
           <View style={{ gap: 16, borderTopWidth: 1, borderTopColor: dividerColor, paddingTop: 16 }}>
             {[
               { key: 'newAssignment', label: t.settings.newAssignment },
@@ -359,7 +344,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: Platform.OS === 'android' ? 0 : 2, // ביטול ה-elevation שגרם למסגרת
   },
   toggle: {
     width: 52, height: 30,
@@ -379,4 +364,3 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 });
-

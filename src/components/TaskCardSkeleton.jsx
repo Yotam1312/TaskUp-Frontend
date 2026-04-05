@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, Platform } from 'react-native';
 
 export default function TaskCardSkeleton({ darkMode }) {
   const pulse = useRef(new Animated.Value(0.4)).current;
@@ -13,7 +13,6 @@ export default function TaskCardSkeleton({ darkMode }) {
     ).start();
   }, []);
 
-  // צבעים מותאמים בדיוק לכרטיס המקורי
   const shimmerLight = darkMode ? '#1e293b' : '#f1f5f9';
   const shimmerDark = darkMode ? '#334155' : '#e2e8f0';
   const cardBg = darkMode ? 'rgba(23, 37, 70, 0.58)' : 'rgba(255, 255, 255, 0.52)';
@@ -27,7 +26,7 @@ export default function TaskCardSkeleton({ darkMode }) {
       borderColor: cardBorder,
       borderRadius: 16,
       padding: 16,
-      flexDirection: 'row', // נשאר 'row' כי המערכת הופכת אותו ב-RTL
+      flexDirection: 'row', 
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       minHeight: 128,
@@ -35,21 +34,16 @@ export default function TaskCardSkeleton({ darkMode }) {
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
       shadowRadius: 4,
-      elevation: 2,
+      elevation: Platform.OS === 'android' ? 0 : 2, // ביטול ה-elevation שגרם למסגרת
     }}>
       
-      {/* 1. אזור הכפתורים - ב-RTL יופיע בימין המסך */}
       <View style={{ gap: 10, width: 100, marginTop: 8, alignItems: 'center' }}>
         <View style={{ width: '100%', height: 32, backgroundColor: shimmerDark, borderRadius: 8 }} />
         <View style={{ width: '100%', height: 32, backgroundColor: shimmerDark, borderRadius: 8 }} />
-        {/* דמה ל-Sticky Note */}
         <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: shimmerLight, marginTop: 4 }} />
       </View>
 
-      {/* 2. אזור התוכן - ב-RTL יופיע בשמאל המסך וטקסט מיושר לימין */}
       <View style={{ flex: 1, paddingLeft: 4, paddingRight: 4, alignItems: 'flex-end' }}>
-        
-        {/* שורת כותרת ונקודה */}
         <View style={{ 
           flexDirection: 'row', 
           alignItems: 'center', 
@@ -62,7 +56,6 @@ export default function TaskCardSkeleton({ darkMode }) {
           <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: shimmerDark }} />
         </View>
 
-        {/* שם קורס - עם ה-marginRight של 20 מהמקור */}
         <View style={{ 
           width: '50%', 
           height: 12, 
@@ -72,7 +65,6 @@ export default function TaskCardSkeleton({ darkMode }) {
           marginRight: 20 
         }} />
 
-        {/* קופסת תאריך/טיימר */}
         <View style={{ marginRight: 20, width: 130 }}>
           <View style={{ 
             height: 44, 
@@ -82,7 +74,6 @@ export default function TaskCardSkeleton({ darkMode }) {
             backgroundColor: shimmerLight 
           }} />
           
-          {/* דמה לנקודות הגלילה */}
           <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 4 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: shimmerDark }} />
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: shimmerLight }} />

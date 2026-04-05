@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MotiView } from 'moti';
 import { useColorScheme } from 'nativewind';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { I18nManager } from 'react-native';
 
 // --- התוספות עבור ההתראות ---
 import * as Notifications from 'expo-notifications';
@@ -18,11 +21,13 @@ import Dashboard from './pages/DashBoard';
 import { translations } from './translations';
 import '../global.css';
 
+I18nManager.allowRTL(false);
+I18nManager.forceRTL(false);
+
 const Stack = createNativeStackNavigator();
-//הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה 
+//הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה
 const PREF_LANGUAGE_KEY = 'taskup.pref.language';
 const PREF_THEME_KEY = 'taskup.pref.theme';
-
 
 // הגדרת התנהגות ההתראות כשהאפליקציה פתוחה (Foreground)
 Notifications.setNotificationHandler({
@@ -32,6 +37,15 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// פותר את בעיית הרקע הלבן בבילד של אנדרואיד
+const transparentTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: 'transparent',
+  },
+};
 
 export default function App() {
   const [accessToken, setAccessToken] = useState(null);
@@ -130,14 +144,16 @@ export default function App() {
       isMounted = false;
     };
   }, []);
-//שמירה של שפה בצורה אוטומטית
+
+  //שמירה של שפה בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
     AsyncStorage.setItem(PREF_LANGUAGE_KEY, language).catch((error) => {
       console.log('Failed to save language preference:', error);
     });
   }, [language, prefsHydrated]);
-//שמירה של צבע בצורה אוטומטית
+
+  //שמירה של צבע בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
     const themeValue = darkMode ? 'dark' : 'light';
@@ -147,69 +163,72 @@ export default function App() {
   }, [darkMode, prefsHydrated]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ flex: 1, backgroundColor: darkMode ? '#020617' : '#f8fafc' }}>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: darkMode ? '#020617' : '#f8fafc' }}>
+          <StatusBar style={darkMode ? 'light' : 'dark'} translucent={true} />
 
-        {/* Aurora blobs */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }} pointerEvents="none">
-          <MotiView
-            from={{ scale: 1, opacity: 0.25 }}
-            animate={{ scale: 1.15, opacity: 0.4 }}
-            transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true }}
-            style={{ position: 'absolute', top: '-5%', left: '-10%', width: 400, height: 400, borderRadius: 200, backgroundColor: darkMode ? '#4c1d95' : '#ede9fe' }}
-          />
-          <MotiView
-            from={{ scale: 1, opacity: 0.25 }}
-            animate={{ scale: 1.15, opacity: 0.4 }}
-            transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true, delay: 2000 }}
-            style={{ position: 'absolute', top: '20%', right: '-15%', width: 350, height: 350, borderRadius: 175, backgroundColor: darkMode ? '#1e1b4b' : '#e0e7ff' }}
-          />
-          <MotiView
-            from={{ scale: 1, opacity: 0.25 }}
-            animate={{ scale: 1.15, opacity: 0.4 }}
-            transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true, delay: 4000 }}
-            style={{ position: 'absolute', bottom: '-5%', left: '20%', width: 500, height: 500, borderRadius: 250, backgroundColor: darkMode ? '#1e3a5f' : '#dbeafe' }}
-          />
+          {/* Aurora blobs */}
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }} pointerEvents="none">
+            <MotiView
+              from={{ scale: 1, opacity: 0.25 }}
+              animate={{ scale: 1.15, opacity: 0.4 }}
+              transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true }}
+              style={{ position: 'absolute', top: '-5%', left: '-10%', width: 400, height: 400, borderRadius: 200, backgroundColor: darkMode ? '#4c1d95' : '#ede9fe' }}
+            />
+            <MotiView
+              from={{ scale: 1, opacity: 0.25 }}
+              animate={{ scale: 1.15, opacity: 0.4 }}
+              transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true, delay: 2000 }}
+              style={{ position: 'absolute', top: '20%', right: '-15%', width: 350, height: 350, borderRadius: 175, backgroundColor: darkMode ? '#1e1b4b' : '#e0e7ff' }}
+            />
+            <MotiView
+              from={{ scale: 1, opacity: 0.25 }}
+              animate={{ scale: 1.15, opacity: 0.4 }}
+              transition={{ type: 'timing', duration: 8000, loop: true, repeatReverse: true, delay: 4000 }}
+              style={{ position: 'absolute', bottom: '-5%', left: '20%', width: 500, height: 500, borderRadius: 250, backgroundColor: darkMode ? '#1e3a5f' : '#dbeafe' }}
+            />
+          </View>
+
+          <NavigationContainer theme={transparentTheme}>
+            <Stack.Navigator
+              initialRouteName="Login"
+              screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}
+            >
+              <Stack.Screen name="Login">
+                {(props) => (
+                  <LoginPage
+                    {...props}
+                    language={language}
+                    setLanguage={setLanguage}
+                    setAccessToken={setAccessToken}
+                    t={t}
+                    darkMode={darkMode}
+                  />
+                )}
+              </Stack.Screen>
+
+              <Stack.Screen name="Dashboard" options={{ gestureEnabled: false, headerShown: false }}>
+                {(props) => (
+                  <Dashboard
+                    {...props}
+                    language={language}
+                    setLanguage={setLanguage}
+                    darkMode={darkMode}
+                    toggleDarkMode={toggleDarkMode}
+                    notificationsSettings={notificationsSettings}
+                    setNotificationsSettings={setNotificationsSettings}
+                    expoPushToken={expoPushToken}
+                    accessToken={accessToken}
+                    t={t}
+                  />
+                )}
+              </Stack.Screen>
+            </Stack.Navigator>
+          </NavigationContainer>
+
         </View>
-
-        <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}
-          >
-            <Stack.Screen name="Login">
-              {(props) => (
-                <LoginPage
-                  {...props}
-                  language={language}
-                  setLanguage={setLanguage}
-                  setAccessToken={setAccessToken} // <--- הנה זה!
-                  t={t}
-                  darkMode={darkMode}
-                />
-              )}
-            </Stack.Screen>
-
-            <Stack.Screen name="Dashboard" options={{ gestureEnabled: false, headerShown: false }}>
-              {(props) => (
-                <Dashboard
-                  {...props}
-                  language={language}
-                  setLanguage={setLanguage}
-                  darkMode={darkMode}
-                  toggleDarkMode={toggleDarkMode}
-                  notificationsSettings={notificationsSettings}
-                  setNotificationsSettings={setNotificationsSettings}
-                  expoPushToken={expoPushToken}
-                  accessToken={accessToken} // <--- מעביר ל-Dashboard את הערך עצמו
-                  t={t}
-                />
-              )}
-            </Stack.Screen>
-          </Stack.Navigator>
-        </NavigationContainer>
-
-      </View>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

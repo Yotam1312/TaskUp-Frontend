@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
-  Modal, Alert, Linking, StyleSheet, Pressable, Animated,
+  Modal, Alert, Linking, StyleSheet, Pressable, Animated, Platform,
 } from 'react-native';
 import { AlertTriangle, StickyNote, X, Maximize2 } from 'lucide-react-native';
 import { MotiView, AnimatePresence } from 'moti';
@@ -19,7 +19,6 @@ function ScaleButton({ onPress, style, textStyle, label, disabled = false }) {
     </TouchableOpacity>
   );
 }
-
 
 export default function TaskCard({ task, type, onAction, t, darkMode, index = 0, onNoteOpen, onNoteClose }) {
   const [timeLeftString, setTimeLeftString] = useState("");
@@ -55,25 +54,19 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
     if (noteMode !== 'closed') {
       handleClose();
     } else {
-      // 1. מפעילים את הגלילה למעלה
       if (onNoteOpen) onNoteOpen();
 
-      // 2. מחכים שהגלילה תסתיים (400 מילישניות)
       setTimeout(() => {
-        // 3. מודדים את המיקום החדש של הכפתור (עכשיו הוא אמור להיות למעלה)
         buttonRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
           setPopupPos({
             top: Math.max(60, pageY - 80),
             left: Math.max(8, pageX - 230),
           });
-          // 4. פותחים את הפופאפ במיקום העליון והבטוח
           setNoteMode('preview');
         });
       }, 400);
     }
   };
-
-
 
   const isOverdue = () => new Date() > new Date(task.dueDateIso);
   const overdue = isOverdue();
@@ -156,7 +149,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.04,
           shadowRadius: 4,
-          elevation: 2,
+          elevation: Platform.OS === 'android' ? 0 : 2, // ביטול ה-elevation שגרם למסגרת
         }}
       >
 
@@ -204,7 +197,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
             </>
           )}
 
-          {/* טאב ארכיון - כפתור החזרה מופיע רק אם הקורס לא פג תוקף */}
+          {/* טאב ארכיון */}
           {type === 'archive' && !task.isCourseExpired && (
             <ScaleButton
               onPress={handleDeleteClick}

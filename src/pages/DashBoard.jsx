@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
-  StyleSheet, Pressable,
+  StyleSheet, Pressable, Platform, Alert
 } from 'react-native';
 import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
 import SettingsPage from './SettingsPage';
-import { Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   fetchAllTasks, 
   markSubmitted, 
@@ -21,8 +21,6 @@ import {
   syncAssignments,
   updateAssignmentNote
 } from '../api';
-import {FlatList, ActivityIndicator, RefreshControl } from 'react-native';
-import { MotiView, AnimatePresence } from 'moti';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -47,7 +45,6 @@ function transformTask(apiTask) {
     dueDateIso: date.toISOString(),
     status: apiTask.computed_status || (apiTask.is_submitted ? 'completed' : 'pending'),
     link: apiTask.link || '',
-    // Keep note in UI model so TaskCard always receives latest backend value.
     note: apiTask.note || '',
     isSubmittedLate: apiTask.is_submitted_late || false,
     isCourseExpired: apiTask.is_course_expired || false,
@@ -60,20 +57,19 @@ export default function Dashboard({
 }) {
   const { username = '', access_token = '', refresh_token = '' } = route?.params || {};
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [greeting, setGreeting] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [tabBarWidth, setTabBarWidth] = useState(0);
-  const isRTL = true
+  const isRTL = true;
   const [scrollPadding, setScrollPadding] = useState(20);
   const [tasks, setTasks] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedCourses, setExpandedCourses] = useState({});
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
-
-  // Tab indicator animation (0 = pending, 1 = completed)
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -85,7 +81,6 @@ export default function Dashboard({
     }).start();
   }, [activeTab]);
 
-  // Pulse animation for pending count
   const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (pendingCount > 0) {
@@ -100,7 +95,6 @@ export default function Dashboard({
     }
   }, [pendingCount]);
 
-  // Floating blob animations
   const blob1Anim = useRef(new Animated.Value(0)).current;
   const blob2Anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -118,9 +112,6 @@ export default function Dashboard({
     ).start();
   }, []);
 
-
-
-  // Drawer slide-in animation
   const drawerAnim = useRef(new Animated.Value(-300)).current;
 
   useEffect(() => {
@@ -133,29 +124,22 @@ export default function Dashboard({
   }, [isMenuOpen]);
 
   useEffect(() => {
-  if (expoPushToken && accessToken) {
-    registerDeviceToken(accessToken, expoPushToken)
-      .then(() => console.log("Device registered in DB!"))
-      .catch(err => console.error("Registration failed:", err));
-  }
-}, [expoPushToken, accessToken]);
-
-  
+    if (expoPushToken && accessToken) {
+      registerDeviceToken(accessToken, expoPushToken)
+        .catch(err => console.error("Registration failed:", err));
+    }
+  }, [expoPushToken, accessToken]);
 
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
-  // One debounce timer per assignment id for smooth note autosave.
   const noteSaveTimers = useRef({});
-  // Support whichever token source is currently populated in this screen.
   const tokenForNotes = accessToken || access_token;
 
-  // Save note immediately to backend (used on note close).
   const saveNoteNow = async (assignmentId, note) => {
     if (!tokenForNotes) return;
     await updateAssignmentNote(tokenForNotes, assignmentId, note);
   };
 
-  // Debounced autosave while user types to avoid spamming requests.
   const scheduleNoteSave = (assignmentId, note) => {
     const prev = noteSaveTimers.current[assignmentId];
     if (prev) clearTimeout(prev);
@@ -169,67 +153,60 @@ export default function Dashboard({
     }, 700);
   };
 
-  // Clear pending timers when screen unmounts.
   useEffect(() => {
     return () => {
       Object.values(noteSaveTimers.current).forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
-const scrollToCard = (taskId) => {
-  setScrollPadding(400); // מוסיף את המרווח
-  setTimeout(() => {
-    const y = cardPositions.current[taskId];
-    if (y !== undefined && scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y, animated: true });
+  const scrollToCard = (taskId) => {
+    setScrollPadding(400); 
+    setTimeout(() => {
+      const y = cardPositions.current[taskId];
+      if (y !== undefined && scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y, animated: true });
+      }
+    }, 100); 
+  };
+
+  const refreshLocalData = async () => {
+    if (!access_token) return;
+    try {
+      const data = await fetchAllTasks(access_token);
+      setTasks(data.map(transformTask));
+      setPendingCount(data.filter(t => t.computed_status === 'pending').length);
+    } catch (error) {}
+  };
+
+  const loadData = async () => {
+    if (!access_token) return;
+    setIsLoading(true); 
+    try {
+      const localData = await fetchAllTasks(access_token);
+      if (localData.length > 0) {
+        setTasks(localData.map(transformTask));
+        setPendingCount(localData.filter(t => t.computed_status === 'pending').length);
+        setIsLoading(false); 
+      }
+      await syncAssignments(access_token); 
+      await refreshLocalData(); 
+    } catch (error) {
+    } finally {
+      setIsLoading(false); 
     }
-  }, 100); // מחכה שהמרווח יתרנדר ואז גולל
-};
+  };
 
-// 1. הגדרה של פונקציית רענון שקטה (בלי סקלטונים)
-const refreshLocalData = async () => {
-  if (!access_token) return;
-  try {
-    const data = await fetchAllTasks(access_token);
-    setTasks(data.map(transformTask));
-    setPendingCount(data.filter(t => t.computed_status === 'pending').length);
-  } catch (error) {
-    console.error("Local refresh error:", error);
-  }
-};
+  useEffect(() => {
+    loadData();
+  }, []);
 
-// 2. הגדרה של פונקציית הטעינה הכבדה (עם סקלטונים וסנכרון מודל)
-const loadData = async () => {
-  if (!access_token) return;
-  setIsLoading(true); // רק כאן הסקלטונים נדלקים
-  try {
-    const localData = await fetchAllTasks(access_token);
-    if (localData.length > 0) {
-      setTasks(localData.map(transformTask));
-      setPendingCount(localData.filter(t => t.computed_status === 'pending').length);
-      setIsLoading(false); // מכבים סקלטונים מהר אם יש מידע ב-DB
-    }
-    await syncAssignments(access_token); // סנכרון כבד מול מודל
-    await refreshLocalData(); // רענון סופי אחרי הסנכרון
-  } catch (error) {
-    console.log("Background sync error:", error);
-  } finally {
-    setIsLoading(false); 
-  }
-};
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(() => {
+      refreshLocalData();
+    });
+    return () => subscription.remove();
+  }, [access_token]);
 
-useEffect(() => {
-  loadData();
-}, []);
-
-useEffect(() => {
-  const subscription = Notifications.addNotificationReceivedListener(notification => {
-    refreshLocalData();
-  });
-  return () => subscription.remove();
-}, [access_token]);
-
-// המרת המספרים מה-DB (למשל [24, 5]) למחרוזות של ה-UI (למשל ["1d", "5h"])
   const mapHoursToUI = (hoursArray) => {
     if (!hoursArray || !Array.isArray(hoursArray)) return ["1d"];
     return hoursArray.map(h => {
@@ -239,7 +216,6 @@ useEffect(() => {
     });
   };
 
-  // משיכת הגדרות ההתראה מהשרת פעם אחת בטעינ
   useEffect(() => {
     const loadSettings = async () => {
       if (!accessToken) return;
@@ -252,13 +228,10 @@ useEffect(() => {
             dateChange: settings.notify_on_due_date_change
           });
         }
-      } catch (error) {
-        console.error("Error loading notification settings:", error);
-      }
+      } catch (error) {}
     };
     loadSettings();
   }, [accessToken]);
-
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -271,57 +244,39 @@ useEffect(() => {
     setGreeting(`${timeGreeting}, ${user}`);
   }, [language, t]);
 
-  useEffect(() => {
-  // בדיקה ששני הנתונים קיימים
-  if (accessToken && expoPushToken) {
-    console.log(" Sending token to backend");
-    
-    registerDeviceToken(accessToken, expoPushToken)
-      .then(() => console.log(" Device registered in DB!"))
-      .catch(err => console.error(" Registration failed:", err));
-  }
-}, [accessToken, expoPushToken]); // ירוץ רק כשאחד מהם משתנה
+  const handleTaskAction = async (action, taskId, payload) => {
+    if (action === 'updateNote') {
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task.id === taskId ? { ...task, note: payload } : task))
+      );
+      scheduleNoteSave(taskId, payload);
+      return;
+    }
 
-const handleTaskAction = async (action, taskId, payload) => {
-  if (action === 'updateNote') {
-    // Reflect note typing immediately in UI for instant feedback.
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === taskId ? { ...task, note: payload } : task))
-    );
-    // Save in background with debounce while user types.
-    scheduleNoteSave(taskId, payload);
-    return;
-  }
+    if (action === 'saveNoteOnClose') {
+      const prev = noteSaveTimers.current[taskId];
+      if (prev) clearTimeout(prev);
+      try {
+        await saveNoteNow(taskId, payload);
+        await refreshLocalData();
+      } catch (e) {}
+      return;
+    }
 
-  if (action === 'saveNoteOnClose') {
-    // Flush pending debounce and do one final save on close.
-    const prev = noteSaveTimers.current[taskId];
-    if (prev) clearTimeout(prev);
+    const previousTasks = [...tasks];
+    setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
 
     try {
-      await saveNoteNow(taskId, payload);
-      await refreshLocalData();
-    } catch (e) {
-      console.error('Close-save failed', e);
+      if (action === 'markAsSubmitted') await markSubmitted(access_token, taskId);
+      else if (action === 'undoSubmit') await unmarkSubmitted(access_token, taskId);
+      else if (action === 'moveToArchive') await markArchived(access_token, taskId);
+      else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
+      refreshLocalData();
+    } catch (error) {
+      setTasks(previousTasks);
+      Alert.alert("אופס", "העדכון נכשל, מנסה לסנכרן מחדש...");
     }
-    return;
-  }
-
-  // Keep existing optimistic behavior for submit/archive actions.
-  const previousTasks = [...tasks];
-  setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
-
-  try {
-    if (action === 'markAsSubmitted') await markSubmitted(access_token, taskId);
-    else if (action === 'undoSubmit') await unmarkSubmitted(access_token, taskId);
-    else if (action === 'moveToArchive') await markArchived(access_token, taskId);
-    else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
-    refreshLocalData();
-  } catch (error) {
-    setTasks(previousTasks);
-    Alert.alert("אופס", "העדכון נכשל, מנסה לסנכרן מחדש...");
-  }
-};
+  };
 
   const filteredTasks = tasks.filter(task => task.status === activeTab);
 
@@ -330,38 +285,35 @@ const handleTaskAction = async (action, taskId, payload) => {
     setIsMenuOpen(false);
   };
 
-
-
-const handleLogoutPress = () => {
-  Alert.alert(
-    t.menu.logout, 
-    t.menu.logoutConfirm, // שימוש במילון במקום במלל קבוע
-    [
-      {
-        text: language === 'he' ? "ביטול" : "Cancel",
-        style: "cancel",
-      },
-      {
-        text: t.menu.logout,
-        style: "destructive",
-        onPress: () => {
-          setIsMenuOpen(false);
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
+  const handleLogoutPress = () => {
+    Alert.alert(
+      t.menu.logout, 
+      t.menu.logoutConfirm, 
+      [
+        {
+          text: language === 'he' ? "ביטול" : "Cancel",
+          style: "cancel",
         },
-      },
-    ]
-  );
-};
+        {
+          text: t.menu.logout,
+          style: "destructive",
+          onPress: () => {
+            setIsMenuOpen(false);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
+        },
+      ]
+    );
+  };
 
   const iconColor = darkMode ? '#94a3b8' : '#334155';
   const menuBg = darkMode ? 'rgba(15,23,42,0.97)' : 'rgba(255,255,255,0.97)';
   const menuTextColor = darkMode ? '#cbd5e1' : '#475569';
   const activeMenuBg = darkMode ? 'rgba(79,70,229,0.2)' : '#eef2ff';
 
-  // Sliding tab indicator: positioned with 'right' in RTL, 'left' in LTR
   const half = tabBarWidth / 2;
   const indicatorPositionStyle = tabBarWidth > 0 ? {
     position: 'absolute',
@@ -373,18 +325,15 @@ const handleLogoutPress = () => {
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: Platform.OS === 'android' ? 0 : 3, // ביטול elevation באנדרואיד כדי לא להסתיר את הטקסט
     [isRTL ? 'right' : 'left']: indicatorAnim.interpolate({
       inputRange: [0, 1],
-      // RTL: pending(0)=right side => right: half+2; completed(1)=left side => right: 2
-      // LTR: pending(0)=left side => left: 2; completed(1)=right side => left: half+2
       outputRange: [2, half + 2],
     }),
   } : null;
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Floating background blobs */}
       <Animated.View pointerEvents="none" style={{
         position: 'absolute', width: 220, height: 220, borderRadius: 110,
         backgroundColor: darkMode ? 'rgba(79,70,229,0.07)' : 'rgba(79,70,229,0.06)',
@@ -398,9 +347,10 @@ const handleLogoutPress = () => {
         transform: [{ translateY: blob2Anim.interpolate({ inputRange: [0, 1], outputRange: [0, -14] }) }],
       }} />
 
-      {/* Header */}
       <View style={{
-        paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16, marginTop: 10,
+        paddingHorizontal: 24, 
+        paddingTop: Math.max(insets.top + 16, 40), 
+        paddingBottom: 16,
         flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between', alignItems: 'center',
       }}>
@@ -435,8 +385,6 @@ const handleLogoutPress = () => {
           <Menu size={26} color={iconColor} />
         </TouchableOpacity>
       </View>
-
-      {/* Pending / Completed Tabs */}
 
       {(activeTab === 'pending' || activeTab === 'completed') && (
         <>
@@ -479,18 +427,13 @@ const handleLogoutPress = () => {
             ref={scrollViewRef}
             style={{
               flex: 1,
-              borderTopLeftRadius: 32,
-              borderTopRightRadius: 32,
-              borderBottomLeftRadius: 32,
-              borderBottomRightRadius: 32,
-              marginTop: 12,
-              marginBottom: 10,
-              marginHorizontal: 10,
-              borderWidth: 1,
-              borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              borderTopLeftRadius: 32, borderTopRightRadius: 32,
+              borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+              marginTop: 12, marginBottom: 10, marginHorizontal: 10,
+              borderWidth: 1, borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
               overflow: 'hidden',
             }}
-            contentContainerStyle={{ paddingBottom: scrollPadding }}
+            contentContainerStyle={{ paddingBottom: scrollPadding + insets.bottom }}
             showsVerticalScrollIndicator={true}
           >
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
@@ -531,11 +474,8 @@ const handleLogoutPress = () => {
             </View>
           </ScrollView>
         </>
-      )
-      }
+      )}
 
-
-{/* Archive */}
       {activeTab === 'archive' && (
         <>
           <View style={{
@@ -555,7 +495,7 @@ const handleLogoutPress = () => {
               marginBottom: 10, marginHorizontal: 10, borderWidth: 1,
               borderColor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', overflow: 'hidden',
             }}
-            contentContainerStyle={{ paddingBottom: scrollPadding }}
+            contentContainerStyle={{ paddingBottom: scrollPadding + insets.bottom }}
             showsVerticalScrollIndicator={true}
           >
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
@@ -563,7 +503,6 @@ const handleLogoutPress = () => {
                 <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></>
               ) : (
                 <>
-                  {/* לוגיקת קיבוץ לפי קורסים והצגת אקורדיון */}
                   {Object.entries(
                     filteredTasks.reduce((acc, task) => {
                       const courseName = task.course || 'קורס כללי';
@@ -575,8 +514,6 @@ const handleLogoutPress = () => {
                     const isExpanded = expandedCourses[courseName];
                     return (
                       <View key={courseName} style={{ marginBottom: 8 }}>
-                        {/* כותרת התיקייה */}
-                        {/* כותרת התיקייה */}
                         <TouchableOpacity
                           onPress={() => setExpandedCourses(prev => ({ ...prev, [courseName]: !prev[courseName] }))}
                           style={{
@@ -587,7 +524,6 @@ const handleLogoutPress = () => {
                           }}
                           activeOpacity={0.7}
                         >
-                          {/* צד ימין: אייקון ושם הקורס */}
                           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 12, flexShrink: 1 }}>
                             <Folder size={20} color={darkMode ? '#94a3b8' : '#475569'} />
                             <Text 
@@ -597,8 +533,6 @@ const handleLogoutPress = () => {
                               {courseName.length > 26 ? courseName.substring(0, 26) + '...' : courseName}
                             </Text>
                           </View>
-
-                          {/* צד שמאל: מספר מטלות וחץ (צמודים יחד) */}
                           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 5, marginLeft: 0 }}>
                             <View style={{ backgroundColor: darkMode ? '#334155' : '#e2e8f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
                               <Text style={{ fontSize: 12, color: darkMode ? '#cbd5e1' : '#475569', fontWeight: 'bold' }}>
@@ -608,8 +542,6 @@ const handleLogoutPress = () => {
                             {isExpanded ? <ChevronUp size={20} color={darkMode ? '#94a3b8' : '#475569'} /> : <ChevronDown size={20} color={darkMode ? '#94a3b8' : '#475569'} />}
                           </View>
                         </TouchableOpacity>
-
-                        {/* תוכן התיקייה (המטלות) */}
                         {isExpanded && (
                           <View style={{ marginTop: 12, gap: 12, paddingHorizontal: 4 }}>
                             {courseTasks.map((task, index) => (
@@ -631,49 +563,42 @@ const handleLogoutPress = () => {
           </ScrollView>
         </>
       )}
-      {/* Settings */}
-      {
-        activeTab === 'settings' && (
-          <View style={{ paddingHorizontal: 8 }}>
-            <SettingsPage
-              customBackAction={() => setActiveTab('pending')}
-              accessToken={accessToken}
-              t={t}
-              language={language}
-              setLanguage={setLanguage}
-              darkMode={darkMode}
-              toggleDarkMode={toggleDarkMode}
-              notificationsSettings={notificationsSettings}
-              setNotificationsSettings={setNotificationsSettings}
-            />
-          </View>
-        )
-      }
 
-
-      {/* Drawer backdrop */}
-      {
-        isMenuOpen && (
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 40 }]}
-            onPress={() => setIsMenuOpen(false)}
+      {activeTab === 'settings' && (
+        <View style={{ paddingHorizontal: 8, paddingBottom: insets.bottom }}>
+          <SettingsPage
+            customBackAction={() => setActiveTab('pending')}
+            accessToken={accessToken}
+            t={t}
+            language={language}
+            setLanguage={setLanguage}
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+            notificationsSettings={notificationsSettings}
+            setNotificationsSettings={setNotificationsSettings}
           />
-        )
-      }
+        </View>
+      )}
 
-      {/* Slide-in drawer */}
+      {isMenuOpen && (
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 40 }]}
+          onPress={() => setIsMenuOpen(false)}
+        />
+      )}
+
       <Animated.View style={{
         position: 'absolute', top: 0, bottom: 0, left: 0,
         width: '62%', maxWidth: 280,
         backgroundColor: menuBg,
         borderTopRightRadius: 45, borderBottomRightRadius: 45,
-        paddingHorizontal: 24, paddingVertical: 24,
+        paddingHorizontal: 24, paddingTop: Math.max(insets.top + 24, 48), paddingBottom: insets.bottom + 24,
         zIndex: 50,
         shadowColor: '#000', shadowOffset: { width: 4, height: 0 },
         shadowOpacity: 0.2, shadowRadius: 16, elevation: 20,
         transform: [{ translateX: drawerAnim }],
       }}>
-        <View style={{ alignItems: 'flex-end', marginBottom: 24, marginTop: 48 }}>
+        <View style={{ alignItems: 'flex-end', marginBottom: 24 }}>
           <TouchableOpacity
             onPress={() => setIsMenuOpen(false)}
             style={{ padding: 8, backgroundColor: darkMode ? '#1e293b' : '#f1f5f9', borderRadius: 100 }}
@@ -724,12 +649,7 @@ const handleLogoutPress = () => {
               }}
               style={[
                 styles.menuItem,
-                {
-                  alignSelf: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
-                },
+                { alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 10 },
               ]}
               activeOpacity={0.7}
             >
@@ -766,7 +686,6 @@ const handleLogoutPress = () => {
               borderColor: darkMode ? '#334155' : '#f1f5f9',
             }}
           >
-            {/* Centered title */}
             <Text
               style={{
                 color: darkMode ? '#f8fafc' : '#0f172a',
@@ -791,20 +710,14 @@ const handleLogoutPress = () => {
                     alignItems: 'flex-start'
                   }}>
                     <View style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: '#4f46e5',
-                      marginTop: 8,
-                      marginHorizontal: 10,
+                      width: 6, height: 6, borderRadius: 3,
+                      backgroundColor: '#4f46e5', marginTop: 8, marginHorizontal: 10,
                     }} />
 
                     <Text
                       style={{
                         color: darkMode ? '#cbd5e1' : '#475569',
-                        fontSize: 15,
-                        lineHeight: 22,
-                        flex: 1,
+                        fontSize: 15, lineHeight: 22, flex: 1,
                         textAlign: isRTL ? 'right' : 'left',
                         fontWeight: isHeader ? '700' : '400',
                       }}
@@ -819,14 +732,9 @@ const handleLogoutPress = () => {
             <TouchableOpacity
               onPress={() => setIsHelpModalOpen(false)}
               style={{
-                marginTop: 20,
-                backgroundColor: '#4f46e5',
-                paddingVertical: 14,
-                borderRadius: 16,
-                alignItems: 'center',
-                shadowColor: '#4f46e5',
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
+                marginTop: 20, backgroundColor: '#4f46e5',
+                paddingVertical: 14, borderRadius: 16, alignItems: 'center',
+                shadowColor: '#4f46e5', shadowOpacity: 0.3, shadowRadius: 8,
                 shadowOffset: { width: 0, height: 4 },
               }}
               activeOpacity={0.8}
@@ -838,7 +746,7 @@ const handleLogoutPress = () => {
           </View>
         </>
       )}
-    </View >
+    </View>
   );
 }
 

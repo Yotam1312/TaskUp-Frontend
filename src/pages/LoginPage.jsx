@@ -8,10 +8,11 @@ import { MotiView, AnimatePresence } from 'moti';
 import { loginUser } from '../api';
 import { User, Lock, ArrowLeft, ArrowRight, Layers, GraduationCap, Sparkles, Eye, EyeOff, Globe } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginPage({ language, setLanguage, t, darkMode, setAccessToken }) {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +40,6 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
     }
   };
 
-
   const handleMoodleLogin = handleLogin;
 
   const iconColor = darkMode ? '#94a3b8' : '#64748b';
@@ -53,11 +53,18 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
       style={{ flex: 1 }}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 48 }}
+        contentContainerStyle={{ 
+          flexGrow: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          paddingHorizontal: 24, 
+          paddingTop: insets.top + 48,
+          paddingBottom: insets.bottom + 48
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -66,7 +73,9 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
         <TouchableOpacity
           onPress={() => setLanguage(language === 'he' ? 'en' : 'he')}
           style={{
-            position: 'absolute', top: 52, left: 24, zIndex: 50,
+            position: 'absolute', 
+            top: Math.max(insets.top + 10, 52), 
+            left: 24, zIndex: 50,
             flexDirection: 'row', alignItems: 'center', gap: 6,
             paddingHorizontal: 12, paddingVertical: 6,
             backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)',
@@ -98,7 +107,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.15,
             shadowRadius: 24,
-            elevation: 10,
+            elevation: Platform.OS === 'android' ? 0 : 10, 
           }}>
 
             {/* Logo */}
@@ -215,7 +224,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
               </View>
             </MotiView>
 
-{/* Password Field */}
+            {/* Password Field */}
             <MotiView
               animate={{ scale: focusedField === 'pass' ? 1.01 : 1 }}
               transition={{ type: 'spring', damping: 20, stiffness: 200 }}
@@ -240,7 +249,6 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
                   style={[styles.input, {
                     color: textColor,
                     textAlign: isRTL ? 'right' : 'left',
-                    // התיקון כאן: הריפוד הגדול (44) ניתן תמיד בצד של העין
                     paddingRight: isRTL ? 8 : 44,
                     paddingLeft: isRTL ? 44 : 8,
                   }]}
@@ -280,6 +288,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
                 </TouchableOpacity>
               </View>
             </MotiView>
+            
             {/* Login Button */}
             <TouchableOpacity
               onPress={handleLogin}
@@ -327,8 +336,6 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
                 {loginError}
               </Text>
             ) : null}
-
-
 
           </View>
         </MotiView>
