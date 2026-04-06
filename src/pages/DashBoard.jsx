@@ -132,22 +132,6 @@ export default function Dashboard({
     }
   }, [expoPushToken, accessToken]);
 
-  useEffect(() => {
-    const backAction = () => {
-      // ברגע שאנחנו מחזירים true, אנחנו אומרים למערכת: 
-      // "טיפלנו בלחיצה הזו, אל תעשה את פעולת החזור הדיפולטיבית"
-      return true;
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction
-    );
-
-    // ניקוי המאזין כשהקומפוננטה נסגרת
-    return () => backHandler.remove();
-  }, []);
-
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
   const noteSaveTimers = useRef({});
