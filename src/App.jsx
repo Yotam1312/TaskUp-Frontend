@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Platform, Alert } from 'react-native';
+import { View, Platform, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -25,11 +25,9 @@ I18nManager.allowRTL(false);
 I18nManager.forceRTL(false);
 
 const Stack = createNativeStackNavigator();
-//הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה
 const PREF_LANGUAGE_KEY = 'taskup.pref.language';
 const PREF_THEME_KEY = 'taskup.pref.theme';
 
-// הגדרת התנהגות ההתראות כשהאפליקציה פתוחה (Foreground)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -38,7 +36,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// פותר את בעיית הרקע הלבן בבילד של אנדרואיד
 const transparentTheme = {
   ...DefaultTheme,
   colors: {
@@ -52,8 +49,10 @@ export default function App() {
   const { colorScheme, setColorScheme } = useColorScheme();
   const darkMode = colorScheme === 'dark';
   const [language, setLanguage] = useState('he');
-  const [expoPushToken, setExpoPushToken] = useState(''); // שמירת הטוקן בסטייט
-  const [prefsHydrated, setPrefsHydrated] = useState(false);//מונע שמירה דיפולטיבית של ערכים לפני שסיימנו לטעון את כל מה שיש בזכרון
+  const [expoPushToken, setExpoPushToken] = useState('');
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
+  const [initialRoute, setInitialRoute] = useState('Login'); // לאן לנווט בהתחלה
+  const [isAppReady, setIsAppReady] = useState(false); // האם סיימנו לטעון הכל
 
   const [notificationsSettings, setNotificationsSettings] = useState({
     daysBefore: ["1d"],
@@ -64,10 +63,8 @@ export default function App() {
   const toggleDarkMode = () => setColorScheme(darkMode ? 'light' : 'dark');
   const t = translations[language];
 
-  // פונקציית הרישום
   async function registerForPushNotificationsAsync() {
     let token;
-
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
@@ -87,80 +84,75 @@ export default function App() {
       }
 
       if (finalStatus !== 'granted') {
-        Alert.alert('שגיאה', 'לא התקבל אישור לשליחת התראות');
         return;
       }
 
-      // שליפת הטוקן מהשרתים של Expo
       try {
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         if (!projectId) throw new Error('Project ID not found');
 
         token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-        console.log("Your Expo Push Token:", token); // כאן תראה את הטוקן בטרמינל
       } catch (e) {
         console.log("Error getting token:", e);
       }
-    } else {
-      console.log('Must use physical device for Push Notifications');
     }
-
     return token;
   }
 
   useEffect(() => {
     let isMounted = true;
-    //פונקציה שבעת העלאה של האפליקציה זה טוען מהזכרון את ההגדרות
     const hydratePreferences = async () => {
       try {
-        const [storedLanguage, storedTheme] = await Promise.all([
+        const [storedLanguage, storedTheme, storedAccess] = await Promise.all([
           AsyncStorage.getItem(PREF_LANGUAGE_KEY),
           AsyncStorage.getItem(PREF_THEME_KEY),
+          AsyncStorage.getItem('access_token') // שולפים את הטוקן מהזיכרון
         ]);
 
         if (!isMounted) return;
 
-        if (storedLanguage === 'he' || storedLanguage === 'en') {
-          setLanguage(storedLanguage);
-        }
-
-        if (storedTheme === 'dark' || storedTheme === 'light') {
-          setColorScheme(storedTheme);
-        } else {
-          setColorScheme('light');
+        if (storedLanguage) setLanguage(storedLanguage);
+        if (storedTheme) setColorScheme(storedTheme);
+        
+        // הלוגיקה שמחזירה את המשתמש פנימה אוטומטית
+        if (storedAccess) {
+          setAccessToken(storedAccess);
+          setInitialRoute('Dashboard'); // עוקפים את הלוגין
         }
       } catch (error) {
         console.log('Failed to hydrate preferences:', error);
-        if (isMounted) setColorScheme('light');
       } finally {
-        if (isMounted) setPrefsHydrated(true);
+        if (isMounted) {
+          setPrefsHydrated(true);
+          setIsAppReady(true); // עכשיו מותר לרנדר את הניווט
+        }
       }
     };
 
     hydratePreferences();
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
-  //שמירה של שפה בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
-    AsyncStorage.setItem(PREF_LANGUAGE_KEY, language).catch((error) => {
-      console.log('Failed to save language preference:', error);
-    });
+    AsyncStorage.setItem(PREF_LANGUAGE_KEY, language).catch(console.log);
   }, [language, prefsHydrated]);
 
-  //שמירה של צבע בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
-    const themeValue = darkMode ? 'dark' : 'light';
-    AsyncStorage.setItem(PREF_THEME_KEY, themeValue).catch((error) => {
-      console.log('Failed to save theme preference:', error);
-    });
+    AsyncStorage.setItem(PREF_THEME_KEY, darkMode ? 'dark' : 'light').catch(console.log);
   }, [darkMode, prefsHydrated]);
+
+  // מסך טעינה קצרצר עד שמבינים אם המשתמש מחובר או לא
+  if (!isAppReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: darkMode ? '#020617' : '#f8fafc', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#4f46e5" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -168,7 +160,6 @@ export default function App() {
         <View style={{ flex: 1, backgroundColor: darkMode ? '#020617' : '#f8fafc' }}>
           <StatusBar style={darkMode ? 'light' : 'dark'} translucent={true} />
 
-          {/* Aurora blobs */}
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }} pointerEvents="none">
             <MotiView
               from={{ scale: 1, opacity: 0.25 }}
@@ -192,7 +183,7 @@ export default function App() {
 
           <NavigationContainer theme={transparentTheme}>
             <Stack.Navigator
-              initialRouteName="Login"
+              initialRouteName={initialRoute} // מתחיל מהמסך הנכון
               screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}
             >
               <Stack.Screen name="Login">

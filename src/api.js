@@ -1,9 +1,72 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from './config';
 
 /**
- * Login to Moodle via the server.
- * Returns { name, access_token, refresh_token } on success.
+ * פונקציית מעטפת שעושה את כל הקסם מאחורי הקלעים:
+ * בודקת טוקנים -> שולחת בקשה -> תופסת 401 -> מרעננת טוקן -> מנסה שוב
  */
+async function fetchWithAuth(endpoint, options = {}) {
+  let access_token = await AsyncStorage.getItem('access_token');
+  let refresh_token = await AsyncStorage.getItem('refresh_token');
+
+  let headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (access_token) {
+    headers['Authorization'] = `Bearer ${access_token}`;
+  }
+
+  let response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+
+  // אם השרת זורק 401 (פג תוקף) ויש לנו ריפרש טוקן ביד
+  if (response.status === 401 && refresh_token) {
+    try {
+      // מבקשים אסימון חדש (שים לב לוודא שזה הנתיב בשרת שלך)
+      const refreshRes = await fetch(`${BASE_URL}/api/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token }),
+      });
+
+      if (!refreshRes.ok) throw new Error('Refresh failed');
+
+      const newTokens = await refreshRes.json();
+      access_token = newTokens.access_token;
+      
+      await AsyncStorage.setItem('access_token', access_token);
+      if (newTokens.refresh_token) {
+        refresh_token = newTokens.refresh_token;
+        await AsyncStorage.setItem('refresh_token', refresh_token);
+      }
+
+      // מנסים שוב את הבקשה המקורית עם האסימון החדש
+      headers['Authorization'] = `Bearer ${access_token}`;
+      response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+
+    } catch (err) {
+      // אם הרענון נכשל, מנקים נתונים והאפליקציה תזרוק ללוגין בניסיון הבא
+      await AsyncStorage.removeItem('access_token');
+      await AsyncStorage.removeItem('refresh_token');
+      throw new Error('Session completely expired');
+    }
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Request failed');
+  }
+
+  // חילוץ בטוח למקרה שהשרת מחזיר סטטוס ריק (כמו 204)
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ----------------------------------------------------
+// הפעולות הרגילות
+// ----------------------------------------------------
+
 export async function loginUser(username, password) {
   const res = await fetch(`${BASE_URL}/api/login`, {
     method: 'POST',
@@ -11,58 +74,9 @@ export async function loginUser(username, password) {
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) throw new Error('Login failed');
-  return res.json(); // { success, name, access_token, refresh_token }
+  return res.json(); 
 }
 
-/**
- * Fetch all pending tasks for the authenticated user.
- * Uses access_token in Authorization header.
- */
-export async function fetchTasks(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/assignments/pending`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to fetch tasks');
-  return res.json(); // array of assignments
-}
-
-/**
- * Mark an assignment as submitted.
- */
-export async function markSubmitted(accessToken, assignmentId) {
-  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/submit`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to mark as submitted');
-  return res.json();
-}
-
-/**
- * Move an assignment to archive.
- */
-export async function markArchived(accessToken, assignmentId) {
-  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/archive`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to archive');
-  return res.json();
-}
-
-/**
- * Logout — revokes the refresh token.
- */
 export async function logoutUser(refreshToken) {
   await fetch(`${BASE_URL}/api/logout`, {
     method: 'POST',
@@ -71,150 +85,40 @@ export async function logoutUser(refreshToken) {
   });
 }
 
-/**
- * Registers the Expo Push Token with the backend.
- */
-export async function registerDeviceToken(accessToken, token) {
-  const res = await fetch(`${BASE_URL}/api/notifications/register-device`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ token }),
-  });
-  if (!res.ok) throw new Error('Failed to register device token');
-  return res.json();
-}
+// כל שאר הפונקציות פשוט משתמשות במעטפת שיצרנו למעלה (הטוקן נשלף אוטומטית)
+// שמרתי את הפרמטר accessToken בחתימת הפונקציה כדי לא לשבור לך את הקריאות מהדשבורד
 
-/**
- * Update notification settings for the user.
- */
-export async function updateNotificationSettings(accessToken, settings) {
-  console.log("📡 Attempting fetch to:", `${BASE_URL}/api/notifications/settings`);
-  console.log("📦 Payload:", JSON.stringify(settings));
-  const res = await fetch(`${BASE_URL}/api/notifications/settings`, {
-    method: 'POST', // או PUT, לפי מה שתגדיר ב-Backend
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(settings),
-  });
-  if (!res.ok) throw new Error('Failed to update settings');
-  return res.json();
-}
+export const fetchTasks = (accessToken) => fetchWithAuth('/api/assignments/pending', { method: 'GET' });
 
-/**
- * Fetch all submitted tasks that are not yet archived.
- */
-export async function fetchSubmittedTasks(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/assignments/submitted`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to fetch submitted tasks');
-  return res.json();
-}
+export const markSubmitted = (accessToken, assignmentId) => fetchWithAuth(`/api/assignments/${assignmentId}/submit`, { method: 'PATCH' });
 
-/**
- * Fetch all archived tasks (manual + auto-expired).
- */
-export async function fetchArchivedTasks(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/assignments/archived`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to fetch archived tasks');
-  return res.json();
-}
+export const markArchived = (accessToken, assignmentId) => fetchWithAuth(`/api/assignments/${assignmentId}/archive`, { method: 'PATCH' });
 
-/**
- * Unmark an assignment as submitted.
- */
-export async function unmarkSubmitted(accessToken, assignmentId) {
-  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/unsubmit`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to unmark as submitted');
-  return res.json();
-}
+export const registerDeviceToken = (accessToken, token) => fetchWithAuth('/api/notifications/register-device', { 
+  method: 'POST', 
+  body: JSON.stringify({ token }) 
+});
 
-export async function fetchAllTasks(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/assignments/all`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to fetch all tasks');
-  return res.json();
-}
+export const updateNotificationSettings = (accessToken, settings) => fetchWithAuth('/api/notifications/settings', { 
+  method: 'POST', 
+  body: JSON.stringify(settings) 
+});
 
-// Persist assignment note to backend (empty note is stored as null).
-export async function updateAssignmentNote(accessToken, assignmentId, note) {
-  const response = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/note`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      note: note && note.trim().length > 0 ? note : null,
-    }),
-  });
+export const fetchSubmittedTasks = (accessToken) => fetchWithAuth('/api/assignments/submitted', { method: 'GET' });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update note');
-  }
+export const fetchArchivedTasks = (accessToken) => fetchWithAuth('/api/assignments/archived', { method: 'GET' });
 
-  return response.json();
-}
+export const unmarkSubmitted = (accessToken, assignmentId) => fetchWithAuth(`/api/assignments/${assignmentId}/unsubmit`, { method: 'PATCH' });
 
-export async function unmarkArchived(accessToken, assignmentId) {
-  const res = await fetch(`${BASE_URL}/api/assignments/${assignmentId}/unarchive`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to unarchive');
-  return res.json();
-}
+export const fetchAllTasks = (accessToken) => fetchWithAuth('/api/assignments/all', { method: 'GET' });
 
-export async function fetchNotificationSettings(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/notifications/settings`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to fetch settings');
-  return res.json();
-}
+export const updateAssignmentNote = (accessToken, assignmentId, note) => fetchWithAuth(`/api/assignments/${assignmentId}/note`, {
+  method: 'PATCH',
+  body: JSON.stringify({ note: note && note.trim().length > 0 ? note : null }),
+});
 
-export async function syncAssignments(accessToken) {
-  const res = await fetch(`${BASE_URL}/api/assignments/sync`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-  });
-  if (!res.ok) throw new Error('Failed to sync assignments');
-  return res.json();
-}
+export const unmarkArchived = (accessToken, assignmentId) => fetchWithAuth(`/api/assignments/${assignmentId}/unarchive`, { method: 'PATCH' });
+
+export const fetchNotificationSettings = (accessToken) => fetchWithAuth('/api/notifications/settings', { method: 'GET' });
+
+export const syncAssignments = (accessToken) => fetchWithAuth('/api/assignments/sync', { method: 'POST' });

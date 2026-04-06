@@ -8,7 +8,7 @@
     "splash": {
       "image": "./src/assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FDFDFD"
     },
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -24,6 +24,15 @@
       },
       "package": "com.harel.taskup"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/icon.png",
+          "color": "#4f46e5"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "5846f7e2-210c-4346-b920-8bc32ab1c38a"

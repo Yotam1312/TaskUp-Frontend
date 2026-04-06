@@ -10,6 +10,8 @@ import TaskCardSkeleton from '../components/TaskCardSkeleton';
 import SettingsPage from './SettingsPage';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BackHandler } from 'react-native';
 import { 
   fetchAllTasks, 
   markSubmitted, 
@@ -129,6 +131,22 @@ export default function Dashboard({
         .catch(err => console.error("Registration failed:", err));
     }
   }, [expoPushToken, accessToken]);
+
+  useEffect(() => {
+    const backAction = () => {
+      // ברגע שאנחנו מחזירים true, אנחנו אומרים למערכת: 
+      // "טיפלנו בלחיצה הזו, אל תעשה את פעולת החזור הדיפולטיבית"
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    // ניקוי המאזין כשהקומפוננטה נסגרת
+    return () => backHandler.remove();
+  }, []);
 
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
@@ -285,7 +303,7 @@ export default function Dashboard({
     setIsMenuOpen(false);
   };
 
-  const handleLogoutPress = () => {
+const handleLogoutPress = () => {
     Alert.alert(
       t.menu.logout, 
       t.menu.logoutConfirm, 
@@ -297,8 +315,12 @@ export default function Dashboard({
         {
           text: t.menu.logout,
           style: "destructive",
-          onPress: () => {
+          onPress: async () => {
             setIsMenuOpen(false);
+            // מוחקים את האסימונים פיזית מהטלפון
+            await AsyncStorage.removeItem('access_token');
+            await AsyncStorage.removeItem('refresh_token');
+            
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }],
