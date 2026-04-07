@@ -61,7 +61,7 @@ export default function App() {
   const [prefsHydrated, setPrefsHydrated] = useState(false);//מונע שמירה דיפולטיבית של ערכים לפני שסיימנו לטעון את כל מה שיש בזכרון
 
   const [notificationsSettings, setNotificationsSettings] = useState({
-    daysBefore: ["1d"],
+    daysBefore: [],
     newAssignment: true,
     dateChange: true,
   });

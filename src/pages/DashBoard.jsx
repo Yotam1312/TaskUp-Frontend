@@ -216,7 +216,7 @@ export default function Dashboard({
   }, [sessionAccessToken]);
 
   const mapHoursToUI = (hoursArray) => {
-    if (!Array.isArray(hoursArray)) return ["1d"];
+    if (!Array.isArray(hoursArray)) return [];
 
     const reverseMapping = {
       168: "7d",
@@ -242,7 +242,7 @@ export default function Dashboard({
         if (settings) {
           const mappedDays = mapHoursToUI(settings.hours_before);
           setNotificationsSettings({
-            daysBefore: mappedDays.length > 0 ? mappedDays : ["1d"],
+            daysBefore: mappedDays,
             newAssignment: settings.notify_on_new_assignment,
             dateChange: settings.notify_on_due_date_change,
           });
