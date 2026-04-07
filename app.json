@@ -7,7 +7,7 @@
     "icon": "./src/assets/icon.png",
     "splash": {
       "image": "./src/assets/splash.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#f8fafc"
     },
     "userInterfaceStyle": "automatic",
@@ -16,13 +16,14 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yotam.taskup"
+      "bundleIdentifier": "com.harel.taskup"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#4f46e5"
       },
-      "package": "com.harel.taskup"
+      "package": "com.harel.taskup",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [
@@ -31,14 +32,13 @@
           "icon": "./src/assets/icon.png",
           "color": "#4f46e5"
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "extra": {
       "eas": {
-        "projectId": "ac74145c-e41f-4f84-9c75-861a0562def3"
+        "projectId": "5846f7e2-210c-4346-b920-8bc32ab1c38a"
       }
     },
-    "owner": "yotamshpilman"
+    "owner": "harelcohen9"
   }
 }

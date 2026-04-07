@@ -211,7 +211,7 @@ export default function App() {
             <Image
               source={require('./assets/splash.png')}
               style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           </View>
         </GestureHandlerRootView>
