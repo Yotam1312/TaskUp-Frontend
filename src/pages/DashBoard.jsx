@@ -131,11 +131,11 @@ export default function Dashboard({
   }, [isMenuOpen]);
 
   useEffect(() => {
-    if (expoPushToken && accessToken) {
-      registerDeviceToken(accessToken, expoPushToken)
+    if (expoPushToken && sessionAccessToken) {
+      registerDeviceToken(sessionAccessToken, expoPushToken)
         .catch(err => console.error("Registration failed:", err));
     }
-  }, [expoPushToken, accessToken]);
+  }, [expoPushToken, sessionAccessToken]);
 
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
