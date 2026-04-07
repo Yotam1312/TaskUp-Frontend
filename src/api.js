@@ -94,9 +94,9 @@ export const markSubmitted = (accessToken, assignmentId) => fetchWithAuth(`/api/
 
 export const markArchived = (accessToken, assignmentId) => fetchWithAuth(`/api/assignments/${assignmentId}/archive`, { method: 'PATCH' });
 
-export const registerDeviceToken = (accessToken, token) => fetchWithAuth('/api/notifications/register-device', { 
+export const registerDeviceToken = (accessToken, token, language) => fetchWithAuth('/api/notifications/register-device', { 
   method: 'POST', 
-  body: JSON.stringify({ token }) 
+  body: JSON.stringify({ token, language }) 
 });
 
 export const updateNotificationSettings = (accessToken, settings) => fetchWithAuth('/api/notifications/settings', { 
@@ -122,3 +122,4 @@ export const unmarkArchived = (accessToken, assignmentId) => fetchWithAuth(`/api
 export const fetchNotificationSettings = (accessToken) => fetchWithAuth('/api/notifications/settings', { method: 'GET' });
 
 export const syncAssignments = (accessToken) => fetchWithAuth('/api/assignments/sync', { method: 'POST' });
+
