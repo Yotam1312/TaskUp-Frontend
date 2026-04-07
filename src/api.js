@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from './config';
 
 /**
@@ -6,8 +6,8 @@ import { BASE_URL } from './config';
  * בודקת טוקנים -> שולחת בקשה -> תופסת 401 -> מרעננת טוקן -> מנסה שוב
  */
 async function fetchWithAuth(endpoint, options = {}) {
-  let access_token = await AsyncStorage.getItem('access_token');
-  let refresh_token = await AsyncStorage.getItem('refresh_token');
+  let access_token = await SecureStore.getItemAsync('access_token');
+  let refresh_token = await SecureStore.getItemAsync('refresh_token');
 
   let headers = {
     'Content-Type': 'application/json',
@@ -35,10 +35,10 @@ async function fetchWithAuth(endpoint, options = {}) {
       const newTokens = await refreshRes.json();
       access_token = newTokens.access_token;
       
-      await AsyncStorage.setItem('access_token', access_token);
+      await SecureStore.setItemAsync('access_token', access_token);
       if (newTokens.refresh_token) {
         refresh_token = newTokens.refresh_token;
-        await AsyncStorage.setItem('refresh_token', refresh_token);
+        await SecureStore.setItemAsync('refresh_token', refresh_token);
       }
 
       // מנסים שוב את הבקשה המקורית עם האסימון החדש
@@ -47,8 +47,8 @@ async function fetchWithAuth(endpoint, options = {}) {
 
     } catch (err) {
       // אם הרענון נכשל, מנקים נתונים והאפליקציה תזרוק ללוגין בניסיון הבא
-      await AsyncStorage.removeItem('access_token');
-      await AsyncStorage.removeItem('refresh_token');
+      await SecureStore.deleteItemAsync('access_token');
+      await SecureStore.deleteItemAsync('refresh_token');
       throw new Error('Session completely expired');
     }
   }

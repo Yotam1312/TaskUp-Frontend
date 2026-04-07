@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Platform, Alert } from 'react-native';
+import { View, Platform, Alert, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -28,6 +29,7 @@ const Stack = createNativeStackNavigator();
 //הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה
 const PREF_LANGUAGE_KEY = 'taskup.pref.language';
 const PREF_THEME_KEY = 'taskup.pref.theme';
+const PREF_USERNAME_KEY = 'taskup.pref.username';
 
 // הגדרת התנהגות ההתראות כשהאפליקציה פתוחה (Foreground)
 Notifications.setNotificationHandler({
@@ -49,9 +51,12 @@ const transparentTheme = {
 
 export default function App() {
   const [accessToken, setAccessToken] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [hasStoredToken, setHasStoredToken] = useState(false);
   const { colorScheme, setColorScheme } = useColorScheme();
   const darkMode = colorScheme === 'dark';
   const [language, setLanguage] = useState('he');
+  const [username, setUsername] = useState('');
   const [expoPushToken, setExpoPushToken] = useState(''); // שמירת הטוקן בסטייט
   const [prefsHydrated, setPrefsHydrated] = useState(false);//מונע שמירה דיפולטיבית של ערכים לפני שסיימנו לטעון את כל מה שיש בזכרון
 
@@ -113,9 +118,10 @@ export default function App() {
     //פונקציה שבעת העלאה של האפליקציה זה טוען מהזכרון את ההגדרות
     const hydratePreferences = async () => {
       try {
-        const [storedLanguage, storedTheme] = await Promise.all([
+        const [storedLanguage, storedTheme, storedUsername] = await Promise.all([
           AsyncStorage.getItem(PREF_LANGUAGE_KEY),
           AsyncStorage.getItem(PREF_THEME_KEY),
+          AsyncStorage.getItem(PREF_USERNAME_KEY),
         ]);
 
         if (!isMounted) return;
@@ -129,6 +135,10 @@ export default function App() {
         } else {
           setColorScheme('light');
         }
+
+        if (storedUsername) {
+          setUsername(storedUsername);
+        }
       } catch (error) {
         console.log('Failed to hydrate preferences:', error);
         if (isMounted) setColorScheme('light');
@@ -137,7 +147,31 @@ export default function App() {
       }
     };
 
+    const hydrateAuthToken = async () => {
+      try {
+        const storedAccessToken = await SecureStore.getItemAsync('access_token');
+        if (!isMounted) return;
+
+        if (storedAccessToken) {
+          setAccessToken(storedAccessToken);
+          setHasStoredToken(true);
+        } else {
+          setAccessToken(null);
+          setHasStoredToken(false);
+        }
+      } catch (error) {
+        console.log('Failed to hydrate auth token:', error);
+        if (isMounted) {
+          setAccessToken(null);
+          setHasStoredToken(false);
+        }
+      } finally {
+        if (isMounted) setAuthChecked(true);
+      }
+    };
+
     hydratePreferences();
+    hydrateAuthToken();
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
 
     return () => {
@@ -161,6 +195,29 @@ export default function App() {
       console.log('Failed to save theme preference:', error);
     });
   }, [darkMode, prefsHydrated]);
+
+  if (!authChecked) {
+    return (
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: darkMode ? '#020617' : '#f8fafc',
+            }}
+          >
+            <Image
+              source={require('./assets/splash.png')}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
+          </View>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -192,7 +249,7 @@ export default function App() {
 
           <NavigationContainer theme={transparentTheme}>
             <Stack.Navigator
-              initialRouteName="Login"
+              initialRouteName={hasStoredToken ? 'Dashboard' : 'Login'}
               screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}
             >
               <Stack.Screen name="Login">
@@ -202,6 +259,7 @@ export default function App() {
                     language={language}
                     setLanguage={setLanguage}
                     setAccessToken={setAccessToken}
+                    setUsername={setUsername}
                     t={t}
                     darkMode={darkMode}
                   />
@@ -220,6 +278,9 @@ export default function App() {
                     setNotificationsSettings={setNotificationsSettings}
                     expoPushToken={expoPushToken}
                     accessToken={accessToken}
+                    setAccessToken={setAccessToken}
+                    username={username}
+                    setUsername={setUsername}
                     t={t}
                   />
                 )}

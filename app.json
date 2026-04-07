@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.harel.taskup"
+      "bundleIdentifier": "com.yotam.taskup"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,13 +31,14 @@
           "icon": "./src/assets/icon.png",
           "color": "#4f46e5"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
-        "projectId": "5846f7e2-210c-4346-b920-8bc32ab1c38a"
+        "projectId": "ac74145c-e41f-4f84-9c75-861a0562def3"
       }
     },
-    "owner": "harelcohen9"
+    "owner": "yotamshpilman"
   }
 }

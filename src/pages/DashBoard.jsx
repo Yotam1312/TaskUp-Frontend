@@ -10,6 +10,7 @@ import TaskCardSkeleton from '../components/TaskCardSkeleton';
 import SettingsPage from './SettingsPage';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler } from 'react-native';
 import { 
@@ -23,6 +24,7 @@ import {
   syncAssignments,
   updateAssignmentNote
 } from '../api';
+import { sleep } from 'react-native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -55,9 +57,9 @@ function transformTask(apiTask) {
 
 export default function Dashboard({
   route, language, setLanguage, darkMode, toggleDarkMode,
-  notificationsSettings, setNotificationsSettings,expoPushToken, t,accessToken,
+  notificationsSettings, setNotificationsSettings,expoPushToken, t,accessToken, setAccessToken, username, setUsername,
 }) {
-  const { username = '', access_token = '', refresh_token = '' } = route?.params || {};
+  const { access_token = '', refresh_token = '' } = route?.params || {};
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [greeting, setGreeting] = useState('');
@@ -71,6 +73,9 @@ export default function Dashboard({
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedCourses, setExpandedCourses] = useState({});
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const debounceTimerRef = useRef(null);
+  const latestPayloadRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
@@ -135,7 +140,8 @@ export default function Dashboard({
   const scrollViewRef = useRef(null);
   const cardPositions = useRef({});
   const noteSaveTimers = useRef({});
-  const tokenForNotes = accessToken || access_token;
+  const sessionAccessToken = accessToken || access_token;
+  const tokenForNotes = sessionAccessToken;
 
   const saveNoteNow = async (assignmentId, note) => {
     if (!tokenForNotes) return;
@@ -172,25 +178,25 @@ export default function Dashboard({
   };
 
   const refreshLocalData = async () => {
-    if (!access_token) return;
+    if (!sessionAccessToken) return;
     try {
-      const data = await fetchAllTasks(access_token);
+      const data = await fetchAllTasks(sessionAccessToken);
       setTasks(data.map(transformTask));
       setPendingCount(data.filter(t => t.computed_status === 'pending').length);
     } catch (error) {}
   };
 
   const loadData = async () => {
-    if (!access_token) return;
+    if (!sessionAccessToken) return;
     setIsLoading(true); 
     try {
-      const localData = await fetchAllTasks(access_token);
+      const localData = await fetchAllTasks(sessionAccessToken);
       if (localData.length > 0) {
         setTasks(localData.map(transformTask));
         setPendingCount(localData.filter(t => t.computed_status === 'pending').length);
         setIsLoading(false); 
       }
-      await syncAssignments(access_token); 
+      await syncAssignments(sessionAccessToken); 
       await refreshLocalData(); 
     } catch (error) {
     } finally {
@@ -200,22 +206,32 @@ export default function Dashboard({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [sessionAccessToken]);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       refreshLocalData();
     });
     return () => subscription.remove();
-  }, [access_token]);
+  }, [sessionAccessToken]);
 
   const mapHoursToUI = (hoursArray) => {
-    if (!hoursArray || !Array.isArray(hoursArray)) return ["1d"];
-    return hoursArray.map(h => {
-      if (h === 24) return "1d";
-      if (h === 48) return "2d";
-      return `${h}h`;
-    });
+    if (!Array.isArray(hoursArray)) return ["1d"];
+
+    const reverseMapping = {
+      168: "7d",
+      72: "3d",
+      48: "2d",
+      24: "1d",
+      12: "12h",
+      8: "8h",
+      5: "5h",
+      1: "1h",
+    };
+
+    return hoursArray
+      .map((h) => reverseMapping[h])
+      .filter(Boolean);
   };
 
   useEffect(() => {
@@ -224,10 +240,11 @@ export default function Dashboard({
       try {
         const settings = await fetchNotificationSettings(accessToken);
         if (settings) {
+          const mappedDays = mapHoursToUI(settings.hours_before);
           setNotificationsSettings({
-            daysBefore: mapHoursToUI(settings.hours_before),
+            daysBefore: mappedDays.length > 0 ? mappedDays : ["1d"],
             newAssignment: settings.notify_on_new_assignment,
-            dateChange: settings.notify_on_due_date_change
+            dateChange: settings.notify_on_due_date_change,
           });
         }
       } catch (error) {}
@@ -237,7 +254,7 @@ export default function Dashboard({
 
   useEffect(() => {
     const hour = new Date().getHours();
-    const user = username || 'משתמש';
+    const user = username || (language === 'he' ? 'משתמש' : 'User');
     let timeGreeting = '';
     if (hour >= 5 && hour < 12) timeGreeting = t.greeting.morning;
     else if (hour >= 12 && hour < 18) timeGreeting = t.greeting.afternoon;
@@ -269,10 +286,10 @@ export default function Dashboard({
     setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
 
     try {
-      if (action === 'markAsSubmitted') await markSubmitted(access_token, taskId);
-      else if (action === 'undoSubmit') await unmarkSubmitted(access_token, taskId);
-      else if (action === 'moveToArchive') await markArchived(access_token, taskId);
-      else if (action === 'unarchive') await unmarkArchived(access_token, taskId);
+      if (action === 'markAsSubmitted') await markSubmitted(sessionAccessToken, taskId);
+      else if (action === 'undoSubmit') await unmarkSubmitted(sessionAccessToken, taskId);
+      else if (action === 'moveToArchive') await markArchived(sessionAccessToken, taskId);
+      else if (action === 'unarchive') await unmarkArchived(sessionAccessToken, taskId);
       refreshLocalData();
     } catch (error) {
       setTasks(previousTasks);
@@ -301,9 +318,11 @@ const handleLogoutPress = () => {
           style: "destructive",
           onPress: async () => {
             setIsMenuOpen(false);
-            // מוחקים את האסימונים פיזית מהטלפון
-            await AsyncStorage.removeItem('access_token');
-            await AsyncStorage.removeItem('refresh_token');
+            await SecureStore.deleteItemAsync('access_token');
+            await SecureStore.deleteItemAsync('refresh_token');
+            await AsyncStorage.removeItem('taskup.pref.username');
+            setAccessToken(null);
+            setUsername('');
             
             navigation.reset({
               index: 0,
@@ -337,6 +356,45 @@ const handleLogoutPress = () => {
       outputRange: [2, half + 2],
     }),
   } : null;
+
+  const syncWithBackend = (updatedSettings) => {
+    latestPayloadRef.current = updatedSettings;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      const requestId = ++requestIdRef.current;
+      const payload = latestPayloadRef.current;
+
+      setSaveStatus("saving");
+
+      if (!accessToken) {
+        console.error("No Access Token found");
+        if (requestId === requestIdRef.current) setSaveStatus("error");
+        return;
+      }
+
+      try {
+        await updateNotificationSettings(accessToken, {
+          hours_before: mapOptionsToHours(payload.daysBefore || []),
+          notify_on_new: payload.newAssignment,
+          notify_on_change: payload.dateChange,
+        });
+
+        if (requestId === requestIdRef.current) {
+          setSaveStatus("saved");
+          setTimeout(() => {
+            if (requestId === requestIdRef.current) setSaveStatus("idle");
+          }, 1200);
+        }
+      } catch (err) {
+        console.error("Sync error:", err);
+        if (requestId === requestIdRef.current) setSaveStatus("error");
+      }
+    }, 300);
+  };
 
   return (
     <View style={{ flex: 1 }}>

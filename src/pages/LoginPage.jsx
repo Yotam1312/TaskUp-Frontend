@@ -9,37 +9,37 @@ import { loginUser } from '../api';
 import { User, Lock, ArrowLeft, ArrowRight, Layers, GraduationCap, Sparkles, Eye, EyeOff, Globe } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function LoginPage({ language, setLanguage, t, darkMode, setAccessToken }) {
+export default function LoginPage({ language, setLanguage, t, darkMode, setAccessToken, setUsername: setAppUsername }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const isRTL = language === 'he';
 
 const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) return;
+    if (!usernameInput.trim() || !password.trim()) return;
     setLoading(true);
     setLoginError('');
     try {
-      const { name, access_token, refresh_token } = await loginUser(username.trim(), password);
+      const { name, access_token, refresh_token } = await loginUser(usernameInput.trim(), password);
       setAccessToken(access_token);
+      setAppUsername(name || '');
       
-      // התיקון הקריטי: שומרים את הנתונים בזיכרון הפיזי של הטלפון
-      await AsyncStorage.setItem('access_token', access_token);
+      await SecureStore.setItemAsync('access_token', access_token);
       if (refresh_token) {
-        await AsyncStorage.setItem('refresh_token', refresh_token);
+        await SecureStore.setItemAsync('refresh_token', refresh_token);
       }
+      await AsyncStorage.setItem('taskup.pref.username', name || '');
       
-      navigation.navigate('Dashboard', {
+      navigation.replace('Dashboard', {
         username: name,
-        access_token,
-        refresh_token,
       });
     } catch {
       setLoginError(language === 'he' ? 'שם משתמש או סיסמה שגויים' : 'Invalid credentials');
@@ -220,8 +220,8 @@ const handleLogin = async () => {
                 <TextInput
                   placeholder={t.login.idPlaceholder}
                   placeholderTextColor={placeholderColor}
-                  value={username}
-                  onChangeText={setUsername}
+                  value={usernameInput}
+                  onChangeText={setUsernameInput}
                   autoCapitalize="none"
                   autoCorrect={false}
                   style={[styles.input, { color: textColor, textAlign: isRTL ? 'right' : 'left' }]}
