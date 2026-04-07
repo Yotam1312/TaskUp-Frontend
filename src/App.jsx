@@ -10,6 +10,7 @@ import { useColorScheme } from 'nativewind';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { I18nManager } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 
 // --- התוספות עבור ההתראות ---
 import * as Notifications from 'expo-notifications';
@@ -21,6 +22,8 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/DashBoard';
 import { translations } from './translations';
 import '../global.css';
+
+SplashScreen.preventAutoHideAsync();
 
 I18nManager.allowRTL(false);
 I18nManager.forceRTL(false);
@@ -147,7 +150,7 @@ export default function App() {
       }
     };
 
-    const hydrateAuthToken = async () => {
+const hydrateAuthToken = async () => {
       try {
         const storedAccessToken = await SecureStore.getItemAsync('access_token');
         if (!isMounted) return;
@@ -166,7 +169,11 @@ export default function App() {
           setHasStoredToken(false);
         }
       } finally {
-        if (isMounted) setAuthChecked(true);
+        if (isMounted) {
+          setAuthChecked(true);
+          // --- התוספת כאן: מעלימים את הספלאש הנייטיב רק כשהכל מוכן ---
+          SplashScreen.hideAsync();
+        }
       }
     };
 
@@ -196,27 +203,9 @@ export default function App() {
     });
   }, [darkMode, prefsHydrated]);
 
-  if (!authChecked) {
-    return (
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: darkMode ? '#020617' : '#f8fafc',
-            }}
-          >
-            <Image
-              source={require('./assets/splash.png')}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="contain"
-            />
-          </View>
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
-    );
+if (!authChecked) {
+    // מחזירים null. מסך הספלאש הנייטיב ממשיך להיות מוצג ברקע.
+    return null;
   }
 
   return (
