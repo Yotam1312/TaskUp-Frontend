@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import TOSCheckbox from '../components/TOSCheckbox';
 
 export default function LoginPage({ language, setLanguage, t, darkMode, setAccessToken, setUsername: setAppUsername }) {
   const navigation = useNavigation();
@@ -21,6 +22,7 @@ export default function LoginPage({ language, setLanguage, t, darkMode, setAcces
   const [usernameInput, setUsernameInput] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const isRTL = language === 'he';
 
 const handleLogin = async () => {
@@ -296,12 +298,20 @@ const handleLogin = async () => {
               </View>
             </MotiView>
             
+            <View style={{ width: '100%', marginTop: 8, marginBottom: 20 }}>
+              <TOSCheckbox
+                currentLanguage={language}
+                isAccepted={isTermsAccepted}
+                onAcceptChange={setIsTermsAccepted}
+              />
+            </View>
+
             {/* Login Button */}
             <TouchableOpacity
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || !isTermsAccepted}
               activeOpacity={0.9}
-              style={{ width: '100%', marginTop: 24, marginBottom: 32 }}
+              style={{ width: '100%', marginTop: 24, marginBottom: 32, opacity: loading || !isTermsAccepted ? 0.6 : 1 }}
             >
               <LinearGradient
                 colors={['#4f46e5', '#7c3aed', '#4f46e5']}

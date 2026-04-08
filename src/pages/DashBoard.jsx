@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
   StyleSheet, Pressable, Platform, Alert
 } from 'react-native';
-import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react-native';
+import { Menu, X, CheckCircle, Clock, Archive, LogOut, Settings, ClipboardList, Folder, ChevronDown, ChevronUp, HelpCircle, ArrowRight, ArrowLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import TaskCard from '../components/TaskCard';
 import TaskCardSkeleton from '../components/TaskCardSkeleton';
@@ -304,6 +304,16 @@ useEffect(() => {
     setIsMenuOpen(false);
   };
 
+  const handleArchiveBackPress = () => {
+    // Archive is a tab inside Dashboard. If there is no navigation stack to pop,
+    // we still return to the main dashboard content by switching to pending.
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    setActiveTab('pending');
+  };
+
 const handleLogoutPress = () => {
     Alert.alert(
       t.menu.logout, 
@@ -416,13 +426,19 @@ const handleLogoutPress = () => {
         paddingTop: Math.max(insets.top + 16, 40), 
         paddingBottom: 16,
         flexDirection: isRTL ? 'row-reverse' : 'row',
-        justifyContent: 'space-between', alignItems: 'center',
+        justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
         <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
           {activeTab === 'settings' ? (
             <Text style={{ fontSize: 24, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
               {t.settings.title}
             </Text>
+          ) : activeTab === 'archive' ? (
+            <>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
+                {t.tabs.archive}
+              </Text>
+            </>
           ) : (
             <>
               <Text style={{ fontSize: 23, fontWeight: '700', color: darkMode ? 'white' : '#1e293b' }}>
@@ -443,6 +459,7 @@ const handleLogoutPress = () => {
             padding: 8,
             backgroundColor: darkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.5)',
             borderRadius: 100,
+            marginTop: activeTab === 'archive' ? 8 : 0,
           }}
           activeOpacity={0.7}
         >
@@ -543,13 +560,33 @@ const handleLogoutPress = () => {
       {activeTab === 'archive' && (
         <>
           <View style={{
-            marginHorizontal: 24, marginTop: 16, marginBottom: 16,
-            flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8,
+            marginHorizontal: 24,
+            marginTop: 16,
+            marginBottom: 24,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 16,
           }}>
-            <Archive size={20} color={darkMode ? '#94a3b8' : '#475569'} />
-            <Text style={{ fontSize: 20, fontWeight: '700', color: darkMode ? '#94a3b8' : '#475569' }}>
-              {t.tabs.archive}
-            </Text>
+            <TouchableOpacity
+              onPress={handleArchiveBackPress}
+              style={{
+                padding: 12,
+                backgroundColor: darkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.5)',
+                borderRadius: 100,
+              }}
+              activeOpacity={0.7}
+            >
+              {isRTL
+                ? <ArrowRight size={20} color={darkMode ? '#e2e8f0' : '#334155'} />
+                : <ArrowLeft size={20} color={darkMode ? '#e2e8f0' : '#334155'} />
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleArchiveBackPress} activeOpacity={0.7}>
+              <Text style={{ fontSize: 14, color: darkMode ? '#94a3b8' : '#475569' }}>
+                {t.settings.back}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView
