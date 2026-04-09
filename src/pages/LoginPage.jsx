@@ -188,7 +188,7 @@ const handleLogin = async () => {
                 marginBottom: 6,
               }}>
                 {/* צבע סגול מותגי */}
-                <Text style={{ color: '#4f46e5' }}>My</Text>
+                <Text style={{ color: '#4f46e5' }}>Uni</Text>
                 <Text style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>Task</Text>
               </Text>
 
@@ -325,7 +325,8 @@ const handleLogin = async () => {
                   shadowOffset: { width: 0, height: 6 },
                   shadowOpacity: 0.4,
                   shadowRadius: 14,
-                  elevation: 8,
+                  elevation: (loading || !isTermsAccepted) ? 0 : 8,
+                  shadowOpacity: (loading || !isTermsAccepted) ? 0 : 0.4
                 }}
               >
                 {loading ? (

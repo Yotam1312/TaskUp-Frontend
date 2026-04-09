@@ -123,7 +123,7 @@ const translations = {
 
 export default function TOSCheckbox({ currentLanguage, isAccepted, onAcceptChange }: TOSCheckboxProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const colorScheme = useColorScheme();
+  const {colorScheme} = useColorScheme();
   const isDark = colorScheme === 'dark';
   const t = translations[currentLanguage];
 

@@ -13,11 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler } from 'react-native';
-import { 
-  fetchAllTasks, 
-  markSubmitted, 
-  markArchived, 
-  registerDeviceToken, 
+import {
+  fetchAllTasks,
+  markSubmitted,
+  markArchived,
+  registerDeviceToken,
   unmarkSubmitted,
   unmarkArchived,
   fetchNotificationSettings,
@@ -39,7 +39,7 @@ function transformTask(apiTask) {
   const pad = (n) => n.toString().padStart(2, '0');
   const dueDateDisplay = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
   const dueTimeDisplay = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  
+
   return {
     id: apiTask.id,
     title: apiTask.title,
@@ -57,7 +57,7 @@ function transformTask(apiTask) {
 
 export default function Dashboard({
   route, language, setLanguage, darkMode, toggleDarkMode,
-  notificationsSettings, setNotificationsSettings,expoPushToken, t,accessToken, setAccessToken, username, setUsername,
+  notificationsSettings, setNotificationsSettings, expoPushToken, t, accessToken, setAccessToken, username, setUsername,
 }) {
   const { access_token = '', refresh_token = '' } = route?.params || {};
   const navigation = useNavigation();
@@ -76,8 +76,33 @@ export default function Dashboard({
   const debounceTimerRef = useRef(null);
   const latestPayloadRef = useRef(null);
   const requestIdRef = useRef(0);
+  const modalAnim = useRef(new Animated.Value(0)).current;
 
   const indicatorAnim = useRef(new Animated.Value(0)).current;
+
+
+  useEffect(() => {
+    if (isHelpModalOpen) {
+      // אנימציית כניסה: שילוב של Scale ו-Opacity
+      Animated.spring(modalAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 50, // שולט ב"קפיציות"
+        friction: 8,  // שולט בחיכוך (כמה זה נעים)
+      }).start();
+    }
+  }, [isHelpModalOpen]);
+
+  const closeHelpModal = () => {
+    // אנימציית יציאה
+    Animated.timing(modalAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsHelpModalOpen(false); // רק בסוף האנימציה אנחנו באמת סוגרים
+    });
+  };
 
   useEffect(() => {
     Animated.spring(indicatorAnim, {
@@ -130,7 +155,7 @@ export default function Dashboard({
     }).start();
   }, [isMenuOpen]);
 
-useEffect(() => {
+  useEffect(() => {
     if (expoPushToken && sessionAccessToken) {
       registerDeviceToken(sessionAccessToken, expoPushToken, language)
         .catch(err => console.error("Registration failed:", err));
@@ -168,13 +193,13 @@ useEffect(() => {
   }, []);
 
   const scrollToCard = (taskId) => {
-    setScrollPadding(400); 
+    setScrollPadding(400);
     setTimeout(() => {
       const y = cardPositions.current[taskId];
       if (y !== undefined && scrollViewRef.current) {
         scrollViewRef.current.scrollTo({ y, animated: true });
       }
-    }, 100); 
+    }, 100);
   };
 
   const refreshLocalData = async () => {
@@ -183,24 +208,24 @@ useEffect(() => {
       const data = await fetchAllTasks(sessionAccessToken);
       setTasks(data.map(transformTask));
       setPendingCount(data.filter(t => t.computed_status === 'pending').length);
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const loadData = async () => {
     if (!sessionAccessToken) return;
-    setIsLoading(true); 
+    setIsLoading(true);
     try {
       const localData = await fetchAllTasks(sessionAccessToken);
       if (localData.length > 0) {
         setTasks(localData.map(transformTask));
         setPendingCount(localData.filter(t => t.computed_status === 'pending').length);
-        setIsLoading(false); 
+        setIsLoading(false);
       }
-      await syncAssignments(sessionAccessToken); 
-      await refreshLocalData(); 
+      await syncAssignments(sessionAccessToken);
+      await refreshLocalData();
     } catch (error) {
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -247,7 +272,7 @@ useEffect(() => {
             dateChange: settings.notify_on_due_date_change,
           });
         }
-      } catch (error) {}
+      } catch (error) { }
     };
     loadSettings();
   }, [accessToken]);
@@ -278,7 +303,7 @@ useEffect(() => {
       try {
         await saveNoteNow(taskId, payload);
         await refreshLocalData();
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
 
@@ -314,10 +339,10 @@ useEffect(() => {
     setActiveTab('pending');
   };
 
-const handleLogoutPress = () => {
+  const handleLogoutPress = () => {
     Alert.alert(
-      t.menu.logout, 
-      t.menu.logoutConfirm, 
+      t.menu.logout,
+      t.menu.logoutConfirm,
       [
         {
           text: language === 'he' ? "ביטול" : "Cancel",
@@ -333,7 +358,7 @@ const handleLogoutPress = () => {
             await AsyncStorage.removeItem('taskup.pref.username');
             setAccessToken(null);
             setUsername('');
-            
+
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }],
@@ -422,8 +447,8 @@ const handleLogoutPress = () => {
       }} />
 
       <View style={{
-        paddingHorizontal: 24, 
-        paddingTop: Math.max(insets.top + 16, 40), 
+        paddingHorizontal: 24,
+        paddingTop: Math.max(insets.top + 16, 40),
         paddingBottom: 16,
         flexDirection: isRTL ? 'row-reverse' : 'row',
         justifyContent: 'space-between', alignItems: 'flex-start',
@@ -627,8 +652,8 @@ const handleLogoutPress = () => {
                         >
                           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 12, flexShrink: 1 }}>
                             <Folder size={20} color={darkMode ? '#94a3b8' : '#475569'} />
-                            <Text 
-                              style={{ fontSize: 16, fontWeight: '600', color: darkMode ? '#e2e8f0' : '#1e293b', flexShrink: 1 }} 
+                            <Text
+                              style={{ fontSize: 16, fontWeight: '600', color: darkMode ? '#e2e8f0' : '#1e293b', flexShrink: 1 }}
                               numberOfLines={1}
                             >
                               {courseName.length > 26 ? courseName.substring(0, 26) + '...' : courseName}
@@ -745,7 +770,7 @@ const handleLogoutPress = () => {
           <View style={{ marginTop: 'auto', paddingTop: 14, borderTopWidth: 1, borderTopColor: darkMode ? '#1e293b' : '#f1f5f9' }}>
             <TouchableOpacity
               onPress={() => {
-                setIsMenuOpen(false);
+
                 setTimeout(() => setIsHelpModalOpen(true), 180);
               }}
               style={[
@@ -763,64 +788,134 @@ const handleLogoutPress = () => {
       {isHelpModalOpen && (
         <>
           <Pressable
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 60 }]}
-            onPress={() => setIsHelpModalOpen(false)}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 70,elevation: 21 }]}
+            onPress={closeHelpModal}
           />
 
-          <View
+          <Animated.View
             style={{
               position: 'absolute',
-              top: '20%',
-              left: 24,
-              right: 24,
-              maxHeight: '60%',
+              top: '35.2%',
+              left: '8%',           // ----> (שימוש באחוזים במקום פיקסלים קבועים)
+              right: '12%',          // ----> (שומר על רווח שווה מהצדדים בכל מסך)
+              maxHeight: '65%',
               backgroundColor: darkMode ? '#1e293b' : '#ffffff',
-              borderRadius: 24,
-              padding: 24,
-              zIndex: 61,
+              borderRadius: 40,
+              borderTopLeftRadius: 80,
+              borderTopRightRadius: 80,
+              borderBottomLeftRadius: 120,
+              borderBottomRightRadius: 180,
+              padding: '7%',
+              zIndex: 80,
+              elevation: 25,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.15,
               shadowRadius: 20,
               elevation: 10,
+              height: "50%",
               borderWidth: 1,
               borderColor: darkMode ? '#334155' : '#f1f5f9',
+              opacity: modalAnim,
+              transform: [
+                { scale: modalAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+                { translateY: modalAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 0] }) }
+              ],
             }}
           >
+            {/* ----> הזנב של הבועה -  */}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -20,
+                left: "25%",
+                width: 50,
+                height: 50,
+                borderBottomLeftRadius: 80,
+                backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                transform: [{ rotate: '45deg' }],
+                zIndex: -1,
+              }}
+            />
+            <TouchableOpacity
+              onPress={closeHelpModal}
+              style={{
+                position: 'absolute',
+                right: 40,
+                top: 22,           // ----> (מאפשר להציב את הכפתור במיקום מדויק בתיבה)
+                zIndex: 70,                      // ----> (מוודא שהכפתור תמיד מעל כל שאר התוכן)
+                padding: 5,                      // ----> (מגדיל את שטח הלחיצה לנוחות המשתמש)
+                backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9', // ----> (רקע עדין לאייקון)
+                borderRadius: 100,               // ----> (יוצר עיגול סביב ה-X)
+              }}
+              activeOpacity={0.7}
+            >
+              <X size={20} color={darkMode ? '#cbd5e1' : '#475569'} />
+            </TouchableOpacity>
+
             <Text
               style={{
                 color: darkMode ? '#f8fafc' : '#0f172a',
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: '800',
-                marginBottom: 20,
+                marginBottom: 10,
+                marginRight: 40,
                 textAlign: 'center',
+                borderRadius: 800,
               }}
             >
               {t.helpModal.title}
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}
+              style={{
+                borderRadius: 20,                 // עיגול כללי
+                borderBottomLeftRadius: 55,          // פינה אחת פחות עגולה לאפקט "בועה"
+                borderBottomRightRadius: 55,          // פינה אחת פחות עגולה לאפקט "בועה"
+                borderTopLeftRadius: 25,          // פינה אחת פחות עגולה לאפקט "בועה"
+                borderTopRightRadius: 25,          // פינה אחת פחות עגולה לאפקט "בועה"
+                overflow: 'hidden',               // חובה כדי שהעיגול ייראה
+                padding: 5,
+                marginBottom: 45                      // רווח פנימי לטקסט מהמסגרת המעוגלת
+              }}>
               {t.helpModal.body.split('\n').map((line, idx) => {
                 if (!line.trim()) return null;
+
+                // 1. זיהוי כותרת (שורות שמסתיימות בנקודתיים)
                 const isHeader = /^.+:\s*$/.test(line.trim());
+
+                // 2. קביעת כיווניות מקומית לפי שפה (מתעלם מה-isRTL הגלובלי)
+                const localDirection = language === 'he' ? 'row-reverse' : 'row';
+                const localTextAlign = language === 'he' ? 'right' : 'left';
 
                 return (
                   <View key={idx} style={{
-                    marginBottom: 16,
-                    flexDirection: isRTL ? 'row-reverse' : 'row',
-                    alignItems: 'flex-start'
+                    marginBottom: isHeader ? 8 : 16,
+                    flexDirection: localDirection, // ----> משתמש בכיוון המקומי שחישבנו
+                    alignItems: 'flex-start',
                   }}>
-                    <View style={{
-                      width: 6, height: 6, borderRadius: 3,
-                      backgroundColor: '#4f46e5', marginTop: 8, marginHorizontal: 10,
-                    }} />
+
+                    {/* 3. הצגת העיגול רק אם זו לא כותרת */}
+                    {!isHeader && (
+                      <View style={{
+                        width: 6, height: 6, borderRadius: 3,
+                        backgroundColor: '#4f46e5',
+                        marginTop: 8,
+                        marginHorizontal: 10,
+                      }} />
+                    )}
 
                     <Text
                       style={{
                         color: darkMode ? '#cbd5e1' : '#475569',
-                        fontSize: 15, lineHeight: 22, flex: 1,
-                        textAlign: isRTL ? 'right' : 'left',
+                        fontSize: isHeader ? 16 : 15,
+                        lineHeight: 22,
+                        flex: 1,
+                        textAlign: localTextAlign, // ----> יישור טקסט לפי השפה הנבחרו
                         fontWeight: isHeader ? '700' : '400',
+                        // תיקון קטן לכותרות: באנגלית הן צריכות פדינג משמאל כי אין להן עיגול שידחוף אותן
+                        paddingLeft: (isHeader && language === 'en') ? 26 : 0,
+                        paddingRight: (isHeader && language === 'he') ? 26 : 0,
                       }}
                     >
                       {line}
@@ -829,22 +924,7 @@ const handleLogoutPress = () => {
                 );
               })}
             </ScrollView>
-
-            <TouchableOpacity
-              onPress={() => setIsHelpModalOpen(false)}
-              style={{
-                marginTop: 20, backgroundColor: '#4f46e5',
-                paddingVertical: 14, borderRadius: 16, alignItems: 'center',
-                shadowColor: '#4f46e5', shadowOpacity: 0.3, shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                {t.helpModal.close}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </Animated.View>
         </>
       )}
     </View>
