@@ -12,11 +12,9 @@ import { StatusBar } from 'expo-status-bar';
 import { I18nManager } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 
-// --- התוספות עבור ההתראות ---
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-// ----------------------------
 
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/DashBoard';
@@ -29,12 +27,11 @@ I18nManager.allowRTL(false);
 I18nManager.forceRTL(false);
 
 const Stack = createNativeStackNavigator();
-//הגדרת משתנים לשמירה של מצב יום/לילה וגם של שפה
 const PREF_LANGUAGE_KEY = 'taskup.pref.language';
 const PREF_THEME_KEY = 'taskup.pref.theme';
 const PREF_USERNAME_KEY = 'taskup.pref.username';
+const PREF_REMEMBER_ME = 'taskup.pref.rememberMe';
 
-// הגדרת התנהגות ההתראות כשהאפליקציה פתוחה (Foreground)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -43,7 +40,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// פותר את בעיית הרקע הלבן בבילד של אנדרואיד
 const transparentTheme = {
   ...DefaultTheme,
   colors: {
@@ -60,8 +56,8 @@ export default function App() {
   const darkMode = colorScheme === 'dark';
   const [language, setLanguage] = useState('he');
   const [username, setUsername] = useState('');
-  const [expoPushToken, setExpoPushToken] = useState(''); // שמירת הטוקן בסטייט
-  const [prefsHydrated, setPrefsHydrated] = useState(false);//מונע שמירה דיפולטיבית של ערכים לפני שסיימנו לטעון את כל מה שיש בזכרון
+  const [expoPushToken, setExpoPushToken] = useState('');
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
 
   const [notificationsSettings, setNotificationsSettings] = useState({
     daysBefore: [],
@@ -72,10 +68,8 @@ export default function App() {
   const toggleDarkMode = () => setColorScheme(darkMode ? 'light' : 'dark');
   const t = translations[language];
 
-  // פונקציית הרישום
   async function registerForPushNotificationsAsync() {
     let token;
-
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'default',
@@ -99,26 +93,23 @@ export default function App() {
         return;
       }
 
-      // שליפת הטוקן מהשרתים של Expo
       try {
         const projectId = Constants.expoConfig?.extra?.eas?.projectId;
         if (!projectId) throw new Error('Project ID not found');
 
         token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-        console.log("Your Expo Push Token:", token); // כאן תראה את הטוקן בטרמינל
+        console.log("Your Expo Push Token:", token);
       } catch (e) {
         console.log("Error getting token:", e);
       }
     } else {
       console.log('Must use physical device for Push Notifications');
     }
-
     return token;
   }
 
   useEffect(() => {
     let isMounted = true;
-    //פונקציה שבעת העלאה של האפליקציה זה טוען מהזכרון את ההגדרות
     const hydratePreferences = async () => {
       try {
         const [storedLanguage, storedTheme, storedUsername] = await Promise.all([
@@ -150,9 +141,18 @@ export default function App() {
       }
     };
 
-const hydrateAuthToken = async () => {
+    const hydrateAuthToken = async () => {
       try {
+        const rememberMeStatus = await AsyncStorage.getItem(PREF_REMEMBER_ME);
+        
+        // אם המשתמש בחר לא להישאר מחובר ב-Login הקודם
+        if (rememberMeStatus === 'false' || rememberMeStatus === null) {
+            await SecureStore.deleteItemAsync('access_token');
+            await SecureStore.deleteItemAsync('refresh_token');
+        }
+
         const storedAccessToken = await SecureStore.getItemAsync('access_token');
+        
         if (!isMounted) return;
 
         if (storedAccessToken) {
@@ -171,7 +171,6 @@ const hydrateAuthToken = async () => {
       } finally {
         if (isMounted) {
           setAuthChecked(true);
-          // --- התוספת כאן: מעלימים את הספלאש הנייטיב רק כשהכל מוכן ---
           SplashScreen.hideAsync();
         }
       }
@@ -186,7 +185,6 @@ const hydrateAuthToken = async () => {
     };
   }, []);
 
-  //שמירה של שפה בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
     AsyncStorage.setItem(PREF_LANGUAGE_KEY, language).catch((error) => {
@@ -194,7 +192,6 @@ const hydrateAuthToken = async () => {
     });
   }, [language, prefsHydrated]);
 
-  //שמירה של צבע בצורה אוטומטית
   useEffect(() => {
     if (!prefsHydrated) return;
     const themeValue = darkMode ? 'dark' : 'light';
@@ -203,8 +200,7 @@ const hydrateAuthToken = async () => {
     });
   }, [darkMode, prefsHydrated]);
 
-if (!authChecked) {
-    // מחזירים null. מסך הספלאש הנייטיב ממשיך להיות מוצג ברקע.
+  if (!authChecked) {
     return null;
   }
 
@@ -214,7 +210,6 @@ if (!authChecked) {
         <View style={{ flex: 1, backgroundColor: darkMode ? '#020617' : '#f8fafc' }}>
           <StatusBar style={darkMode ? 'light' : 'dark'} translucent={true} />
 
-          {/* Aurora blobs */}
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }} pointerEvents="none">
             <MotiView
               from={{ scale: 1, opacity: 0.25 }}

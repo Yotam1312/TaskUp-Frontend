@@ -44,14 +44,14 @@ export const translations = {
         },
         // --------------------------------
         menu: {
-            tasks: "המטלות שלי",
+            tasks: "מטלות ",
             archive: "ארכיון",
             settings: "הגדרות",
             logout: "התנתק",
             logoutConfirm: "האם אתה בטוח שברצונך להתנתק?"
         },
         helpModal: {
-            title: "עזרה והוראות שימוש",
+            title: "עזרה ושימוש",
             close: "סגור",
             body: "ניהול וסטטוס מטלות:\n\nלביצוע: מטלות פתוחות שעוד לא הגשת.\n\nהוגשו: מטלות שסומנו כהוגשו.\n\nארכיון: מטלה עוברת לארכיון אוטומטית כאשר הקורס מסתיים או אם בחרת להעביר אותה לשם ידנית כדי לנקות את התצוגה. לכל קורס תיפתח תיקייה באופן אוטומטי כאשר מטלה עוברת לארכיון.\n\nהוגש באיחור: תווית המופיעה אוטומטית במידה והמטלה סומנה כ\"הוגשה\" לאחר שתאריך היעד המקורי כבר חלף.\n\nפעולות וכלים חכמים:\n\nהגש מטלה: לחיצה כאן תפתח את הדפדפן ותעביר אותך ישירות לעמוד ההגשה של המטלה הזו באתר המודל.\n\nסמן כהוגש: מאפשר לך לעדכן באפליקציה שהמטלה בוצעה, כדי למנוע התראות עבורה.\n\nבטל הגשה: התחרטת או גילית שעליך לתקן? כפתור זה יחזיר את המטלה לסטטוס \"לביצוע\".\n\nהעבר לארכיון: מעלים את המטלה מרשימת המשימות השוטפות.\n\nשעון עצר: החלק על תאריך ההגשה של המטלה כדי לחשוף שעון ספירה לאחור המראה בדיוק כמה זמן נותר להגשה (זמין רק עבור מטלות שטרם חלף מועדן).\n\nפתק אישי: לכל מטלה מוצמד פתק שבו תוכל לכתוב לעצמך דגשים, תזכורות או סיכומים קצרים.\n\nמסך ההגדרות:\n\nמסך כהה: זמין לנוחיותכם.\n\nשפות הממשק: עברית ואנגלית.\n\nזמני התראה: שליטה מלאה על תזמון הפושים שתקבל.\n\nהתראות עדכונים: אפשרות להדליק או לכבות התראות על גילוי מטלות חדשות או שינוי בתאריכי ההגשה במודל.\n\nהתנתקות: יציאה מהחשבון שלך.\n\nדיווח על תקלות:\nנתקלתם בבעיה? שלחו לנו מייל לכתובת: Support@UniTask.com",
         },
@@ -75,11 +75,34 @@ export const translations = {
         },
         login: {
             slogan: "ניהול המטלות האקדמיות שלך",
-            idPlaceholder: "תעודת זהות",
+            idPlaceholder: "שם משתמש",
             passwordPlaceholder: "סיסמה",
             submitButton: "התחבר",
             or: "או",
             moodleButton: "התחבר דרך Moodle"
+        },
+        notificationsInbox: {
+            title: "התראות",
+            empty: "אין התראות",
+            justNow: "ממש עכשיו",
+            minutesAgo: "לפני {time} דקות",
+            hoursAgo: "לפני {time} שעות",
+            daysAgo: "לפני {time} ימים",
+            weeksAgo: "לפני שבוע ומעלה"
+        },
+        filters: {
+            title: "סנן לפי",
+            sortBy: "מיון",
+            dateAsc: "תאריך - מהישן לחדש",
+            dateDesc: "תאריך - מהחדש לישן",
+            courseAsc: "שם הקורס (א-ת)",
+            courseDesc: "שם הקורס (ת-א)",
+            dueIn: "זמן הגשה",
+            next3Days: "3 ימים הבאים",
+            nextWeek: "שבוע הקרוב",
+            nextMonth: "חודש הקרוב",
+            all: "הכל",
+            close: "סגור"
         }
     },
     en: {
@@ -127,7 +150,7 @@ export const translations = {
         },
         // --------------------------
         menu: {
-            tasks: "My Tasks",
+            tasks: "Tasks",
             archive: "Archive",
             settings: "Settings",
             logout: "Logout",
@@ -159,11 +182,33 @@ export const translations = {
         },
         login: {
             slogan: "Manage your academic tasks smartly",
-            idPlaceholder: "ID Number",
+            idPlaceholder: "Username",
             passwordPlaceholder: "Password",
             submitButton: "Login",
             or: "OR",
             moodleButton: "Login with Moodle"
+        },notificationsInbox: {
+            title: "Notifications",
+            empty: "No notifications",
+            justNow: "Just now",
+            minutesAgo: "{time} minutes ago",
+            hoursAgo: "{time} hours ago",
+            daysAgo: "{time} days ago",
+            weeksAgo: "A week ago or more"
+        },
+        filters: {
+            title: "Filter & Sort",
+            sortBy: "Sort By",
+            dateAsc: "Date - Oldest to Newest",
+            dateDesc: "Date - Newest to Oldest",
+            courseAsc: "Course Name (A-Z)",
+            courseDesc: "Course Name (Z-A)",
+            dueIn: "Due In",
+            next3Days: "Next 3 Days",
+            nextWeek: "Next Week",
+            nextMonth: "Next Month",
+            all: "All",
+            close: "Close"
         }
     }
 };

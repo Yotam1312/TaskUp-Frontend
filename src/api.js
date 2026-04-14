@@ -67,11 +67,11 @@ async function fetchWithAuth(endpoint, options = {}) {
 // הפעולות הרגילות
 // ----------------------------------------------------
 
-export async function loginUser(username, password) {
+export async function loginUser(username, password,institution) {
   const res = await fetch(`${BASE_URL}/api/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password,institution }),
   });
   if (!res.ok) throw new Error('Login failed');
   return res.json(); 

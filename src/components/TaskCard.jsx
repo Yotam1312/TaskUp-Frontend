@@ -104,7 +104,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
   };
 
   // Colors
-  const cardBg = darkMode ? 'rgba(23, 37, 70, 0.58)' : 'rgba(255, 255, 255, 0.52)';
+  const cardBg = darkMode ? 'rgba(23, 37, 70, 0.83)' : 'rgba(255, 255, 255, 0.8)';
   const cardBorder = darkMode ? '#1e293b' : '#e2e8f0';
   const titleColor = darkMode ? '#f1f5f9' : '#0f172a';
   const courseColor = darkMode ? '#98a6b8' : '#64748b';
