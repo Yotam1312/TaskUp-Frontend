@@ -36,26 +36,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function transformTask(apiTask) {
-  const date = new Date(apiTask.due_date);
-  const pad = (n) => n.toString().padStart(2, '0');
-  const dueDateDisplay = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-  const dueTimeDisplay = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
-  return {
-    id: apiTask.id,
-    title: apiTask.title,
-    course: apiTask.course,
-    dueDateDisplay,
-    dueTimeDisplay,
-    dueDateIso: date.toISOString(),
-    status: apiTask.computed_status || (apiTask.is_submitted ? 'completed' : 'pending'),
-    link: apiTask.link || '',
-    note: apiTask.note || '',
-    isSubmittedLate: apiTask.is_submitted_late || false,
-    isCourseExpired: apiTask.is_course_expired || false,
-  };
-}
 
 const NineDotsIcon = ({ color, size = 26 }) => {
   const dotSize = size * 0.26;
@@ -99,6 +79,35 @@ export default function Dashboard({
   const blob2Anim = useRef(new Animated.Value(0)).current;
   const blob3Anim = useRef(new Animated.Value(0)).current;
   const blob4Anim = useRef(new Animated.Value(0)).current;
+
+  // מחקנו את הפרמטר language מתוך הסוגריים!
+  function transformTask(apiTask) {
+    let dueDateDisplay = language === 'he' ? "אין מועד הגשה" : "No due date";
+    let dueTimeDisplay = ""; 
+    let dueDateIso = null;   
+
+    if (apiTask.due_date) {
+      const date = new Date(apiTask.due_date);
+      const pad = (n) => n.toString().padStart(2, '0');
+      dueDateDisplay = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+      dueTimeDisplay = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      dueDateIso = date.toISOString();
+    }
+
+    return {
+      id: apiTask.id,
+      title: apiTask.title,
+      course: apiTask.course,
+      dueDateDisplay,
+      dueTimeDisplay,
+      dueDateIso,
+      status: apiTask.computed_status || (apiTask.is_submitted ? 'completed' : 'pending'),
+      link: apiTask.link || '',
+      note: apiTask.note || '',
+      isSubmittedLate: apiTask.is_submitted_late || false,
+      isCourseExpired: apiTask.is_course_expired || false,
+    };
+  }
 
   useEffect(() => {
     // הפעלת האנימציות
@@ -301,6 +310,15 @@ export default function Dashboard({
   useEffect(() => { loadData(); }, [sessionAccessToken]);
 
   useEffect(() => {
+  setTasks(prevTasks => prevTasks.map(task => {
+    if (!task.dueDateIso) {
+      return { ...task, dueDateDisplay: language === 'he' ? "אין מועד הגשה" : "No due date" };
+    }
+    return task;
+  }));
+}, [language]);
+
+  useEffect(() => {
     const hour = new Date().getHours();
     const firstName = username ? username.split(' ')[0] : (language === 'he' ? 'משתמש' : 'User');
     let timeGreeting = hour >= 5 && hour < 12 ? t.greeting.morning : hour >= 12 && hour < 18 ? t.greeting.afternoon : hour >= 18 && hour < 22 ? t.greeting.evening : t.greeting.night;
@@ -352,9 +370,17 @@ export default function Dashboard({
     if (timeFilter === 'nextWeek') return diffDays >= 0 && diffDays <= 7;
     if (timeFilter === 'nextMonth') return diffDays >= 0 && diffDays <= 30;
     return true;
-  }).sort((a, b) => {
-    if (sortOrder === 'dateAsc') return new Date(a.dueDateIso) - new Date(b.dueDateIso);
-    if (sortOrder === 'dateDesc') return new Date(b.dueDateIso) - new Date(a.dueDateIso);
+}).sort((a, b) => {
+    if (sortOrder === 'dateAsc') {
+      if (!a.dueDateIso) return 1;
+      if (!b.dueDateIso) return -1;
+      return new Date(a.dueDateIso) - new Date(b.dueDateIso);
+    }
+    if (sortOrder === 'dateDesc') {
+      if (!a.dueDateIso) return 1;
+      if (!b.dueDateIso) return -1;
+      return new Date(b.dueDateIso) - new Date(a.dueDateIso);
+    }
     if (sortOrder === 'courseAsc') return a.course.localeCompare(b.course);
     if (sortOrder === 'courseDesc') return b.course.localeCompare(a.course);
     return 0;

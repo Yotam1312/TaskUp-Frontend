@@ -68,11 +68,12 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
     }
   };
 
-  const isOverdue = () => new Date() > new Date(task.dueDateIso);
+  const isOverdue = () => task.dueDateIso ? new Date() > new Date(task.dueDateIso) : false;
   const overdue = isOverdue();
 
   useEffect(() => {
     const calculateTime = () => {
+      if (!task.dueDateIso) return "";
       const now = new Date();
       const due = new Date(task.dueDateIso);
       const diff = due - now;
@@ -267,14 +268,14 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
           )}
 
           {/* Date / Timer scrollable widget */}
-          <View style={{ marginRight: 20, width: 130 }}>
+<View style={{ marginRight: 20, width: 130 }}>
             <View style={{ borderWidth: 1, borderColor: darkMode ? '#475569' : '#1e293b', borderRadius: 8, overflow: 'hidden' }}>
               <ScrollView
                 ref={scrollRef}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                scrollEnabled={type === 'pending' && !overdue}
+                scrollEnabled={type === 'pending' && !overdue && !!task.dueDateIso}
                 onLayout={(e) => setScrollWidth(e.nativeEvent.layout.width)}
                 onScroll={(e) => {
                   const x = e.nativeEvent.contentOffset.x;
@@ -286,11 +287,14 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
                 {/* Slide 1: Date */}
                 <View style={{ width: 130, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, backgroundColor: dateBg }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: dateText }}>{task.dueDateDisplay}</Text>
-                  <Text style={{ fontSize: 10, color: timeText }}>{task.dueTimeDisplay}</Text>
+                  {/* השעה תופיע רק אם יש טקסט ב- dueTimeDisplay */}
+                  {!!task.dueTimeDisplay && (
+                    <Text style={{ fontSize: 10, color: timeText }}>{task.dueTimeDisplay}</Text>
+                  )}
                 </View>
 
-                {/* Slide 2: Countdown (only for pending, not overdue) */}
-                {type === 'pending' && !overdue && (
+                {/* Slide 2: Countdown (only for pending, not overdue, and HAS DATE) */}
+                {type === 'pending' && !overdue && !!task.dueDateIso && (
                   <View style={{ width: 130, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, backgroundColor: timerBg }}>
                     <Text style={{ fontSize: 10, fontWeight: '700', color: timerLabel }}>{t.tasks.timeLeft}</Text>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: timerValue, fontVariant: ['tabular-nums'] }}>
@@ -302,7 +306,7 @@ export default function TaskCard({ task, type, onAction, t, darkMode, index = 0,
             </View>
 
             {/* Scroll dots */}
-            {type === 'pending' && !overdue && (
+            {type === 'pending' && !overdue && !!task.dueDateIso && (
               <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 4 }}>
                 <TouchableOpacity
                   onPress={() => { scrollRef.current?.scrollTo({ x: 0, animated: true }); setActiveScrollIndex(0); }}
