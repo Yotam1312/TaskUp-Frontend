@@ -93,8 +93,8 @@ const handleLogin = async () => {
           justifyContent: 'center', 
           alignItems: 'center', 
           paddingHorizontal: 24, 
-          paddingTop: Math.max(insets.top + 20, 40),
-          paddingBottom: Math.max(insets.bottom + 48, 60)
+          
+          
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -140,7 +140,7 @@ const handleLogin = async () => {
           }}>
 
             {/* Logo */}
-            <View style={{ alignItems: 'center', justifyContent: 'center', width: 120, height: 120, marginBottom: 10 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center', width: 120, height: 120, marginTop: -15 }}>
               <View style={{ position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: '#4f46e5', opacity: 0.1, zIndex: -1 }} />
               <View style={{ position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 10, borderColor: '#4f46e5', borderTopColor: 'transparent', borderRightColor: 'transparent', transform: [{ rotate: '-15deg' }] }} />
               <View style={{ position: 'absolute', top: 20, right: 83, width: 0, height: 0, borderLeftWidth: 12, borderRightWidth: 12, borderBottomWidth: 20, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#4f46e5', transform: [{ rotate: '30deg' }] }} />
@@ -159,7 +159,7 @@ const handleLogin = async () => {
             </View>
 
             {/* Institution Dropdown */}
-            <View style={{ width: '100%', marginBottom: 12, zIndex: 50 }}>
+            <View style={{ width: '85%', marginBottom: 12, zIndex: 50, alignSelf: 'center' }}>
               <TouchableOpacity
                 onPress={() => {
                   setFocusedField('inst');

@@ -27,19 +27,6 @@ import {
 
 
 
-// --- סקשן דיבאג (למחיקה בסיום הבדיקות) ---
-const DebugNotificationsButton = ({ onAddMockData }) => (
-  <TouchableOpacity
-    onPress={onAddMockData}
-    style={{
-      position: 'absolute', bottom: 100, left: 20, zIndex: 9999,
-      backgroundColor: '#ef4444', padding: 10, borderRadius: 50,
-      shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5, elevation: 5
-    }}
-  >
-    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>DEBUG: ADD NOTIFS</Text>
-  </TouchableOpacity>
-);
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -149,6 +136,16 @@ export default function Dashboard({
   const latestPayloadRef = useRef(null);
   const requestIdRef = useRef(0);
   const [saveStatus, setSaveStatus] = useState("idle");
+
+  const scrollToCard = (taskId) => {
+    setScrollPadding(400);
+    setTimeout(() => {
+      const y = cardPositions.current[taskId];
+      if (y !== undefined && scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y, animated: true });
+      }
+    }, 100);
+  };
 
   const mapHoursToUI = (hoursArray) => {
     if (!Array.isArray(hoursArray)) return [];
@@ -316,16 +313,25 @@ export default function Dashboard({
   };
 
   const handleTaskAction = async (action, taskId, payload) => {
-    if (action === 'updateNote') {
+    // טיפול בעדכון הערה - עוצר כאן ולא ממשיך למחיקה (filter)
+    if (action === 'updateNote' || action === 'saveNoteOnClose') {
       setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, note: payload } : task)));
-      const prevTimer = noteSaveTimers.current[taskId];
-      if (prevTimer) clearTimeout(prevTimer);
-      noteSaveTimers.current[taskId] = setTimeout(async () => {
-        await updateAssignmentNote(sessionAccessToken, taskId, payload);
-      }, 700);
-      return;
+
+      if (action === 'updateNote') {
+        const prevTimer = noteSaveTimers.current[taskId];
+        if (prevTimer) clearTimeout(prevTimer);
+        noteSaveTimers.current[taskId] = setTimeout(async () => {
+          await updateAssignmentNote(sessionAccessToken, taskId, payload);
+        }, 700);
+      } else {
+        // שמירה מיידית כשסוגרים את הפתק
+        updateAssignmentNote(sessionAccessToken, taskId, payload);
+      }
+      return; // קריטי: עוצר את הפונקציה כדי שלא תגיע ל-filter למטה
     }
+
     const previousTasks = [...tasks];
+    // כאן הקוד מגיע רק אם זו פעולת סטטוס (כמו markAsSubmitted) שבאמת דורשת להעביר מטלה טאב
     setTasks(prev => prev.filter(t => t.id !== taskId));
     try {
       if (action === 'markAsSubmitted') await markSubmitted(sessionAccessToken, taskId);
@@ -460,7 +466,7 @@ export default function Dashboard({
 
       <AnimatedBackground />
 
-      <DebugNotificationsButton onAddMockData={addMockNotifications} />
+
 
       {/* Header */}
       <View style={{ paddingHorizontal: 24, paddingTop: Math.max(insets.top + 16, 40), paddingBottom: 16, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -505,11 +511,40 @@ export default function Dashboard({
             <TouchableOpacity onPress={() => setActiveTab('pending')} style={styles.tabBtn}><Clock size={16} color={activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8'} /><Text style={[styles.tabText, { color: activeTab === 'pending' ? (darkMode ? '#a5b4fc' : '#4f46e5') : '#94a3b8' }]}>{t.tabs.pending}</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => setActiveTab('completed')} style={styles.tabBtn}><CheckCircle size={16} color={activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8'} /><Text style={[styles.tabText, { color: activeTab === 'completed' ? (darkMode ? '#6ee7b7' : '#059669') : '#94a3b8' }]}>{t.tabs.completed}</Text></TouchableOpacity>
           </View>
+
           <ScrollView ref={scrollViewRef} style={styles.mainScroll} contentContainerStyle={{ paddingBottom: scrollPadding + insets.bottom }}>
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
-              {isLoading ? <><TaskCardSkeleton darkMode={darkMode} /><TaskCardSkeleton darkMode={darkMode} /></> :
-                filteredTasks.map((task, index) => <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} onNoteOpen={() => { cardPositions.current[task.id] = index * 150; setScrollPadding(400); }} onNoteClose={() => setScrollPadding(20)} />)}
-              {!isLoading && filteredTasks.length === 0 && <Text style={styles.emptyText}>{t.tasks.noTasks}</Text>}
+              {isLoading ? (
+                <>
+                  <TaskCardSkeleton darkMode={darkMode} />
+                  <TaskCardSkeleton darkMode={darkMode} />
+                </>
+              ) : (
+                <>
+                  {filteredTasks.map((task, index) => (
+                    <View
+                      key={task.id}
+                      onLayout={(e) => cardPositions.current[task.id] = e.nativeEvent.layout.y}
+                    >
+                      <TaskCard
+                        task={task}
+                        type={activeTab}
+                        onAction={handleTaskAction}
+                        t={t}
+                        darkMode={darkMode}
+                        index={index}
+                        onNoteOpen={() => scrollToCard(task.id)}
+                        onNoteClose={() => {
+                          setTimeout(() => {
+                            setScrollPadding(20);
+                          }, 350);
+                        }}
+                      />
+                    </View>
+                  ))}
+                  {filteredTasks.length === 0 && <Text style={styles.emptyText}>{t.tasks.noTasks}</Text>}
+                </>
+              )}
             </View>
           </ScrollView>
         </>
@@ -544,7 +579,28 @@ export default function Dashboard({
                       {isExpanded && (
                         <View style={{ marginTop: 12, gap: 12, paddingHorizontal: 4 }}>
                           {courseTasks.map((task, index) => (
-                            <TaskCard key={task.id} task={task} type={activeTab} onAction={handleTaskAction} t={t} darkMode={darkMode} index={index} />
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              type={activeTab}
+                              onAction={handleTaskAction}
+                              t={t}
+                              darkMode={darkMode}
+                              index={index}
+                              onNoteOpen={() => {
+                                const yPos = index * 130;
+                                cardPositions.current[task.id] = yPos;
+                                setScrollPadding(350);
+                                setTimeout(() => {
+                                  scrollViewRef.current?.scrollTo({ y: yPos, animated: true });
+                                }, 150);
+                              }}
+                              onNoteClose={() => {
+                                setTimeout(() => {
+                                  setScrollPadding(20);
+                                }, 350);
+                              }}
+                            />
                           ))}
                         </View>
                       )}
@@ -616,7 +672,7 @@ export default function Dashboard({
           <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 8 }}>
             {localNotifs.length === 0 ? <Text style={styles.emptyText}>{t.notificationsInbox?.empty}</Text> :
               localNotifs.map((n, i) => (
-                <View key={i} style={[styles.notifItem, { borderWidth: '0.8',borderColor:'#a5a5a56b',backgroundColor: darkMode ? 'rgba(255, 0, 0, 0.04)' : 'rgba(0,0,0,0.02)', alignItems: isRTLText ? 'flex-end' : 'flex-start' }]}>
+                <View key={i} style={[styles.notifItem, { borderWidth: 0.8, borderColor: '#a5a5a56b', backgroundColor: darkMode ? 'rgba(255, 0, 0, 0.04)' : 'rgba(0,0,0,0.02)', alignItems: isRTLText ? 'flex-end' : 'flex-start' }]}>
                   <Text style={[styles.notifTitle, { color: darkMode ? 'white' : '#1e293b', textAlign: isRTLText ? 'right' : 'left' }]}>{n.title}</Text>
                   <Text style={[styles.notifBody, { color: darkMode ? '#cbd5e1' : '#475569', textAlign: isRTLText ? 'right' : 'left' }]}>{n.body}</Text>
                   <Text style={styles.notifTime}>{getTimeAgo(n.timestamp)}</Text>
@@ -639,7 +695,7 @@ export default function Dashboard({
       {/* פילטר */}
       <Modal visible={isFilterModalOpen} transparent animationType="fade" onRequestClose={() => setIsFilterModalOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setIsFilterModalOpen(false)} />
-        <View style={[styles.characterPanel, { backgroundColor: menuBg, left: 24, width: 300, borderColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(79,70,229,0.1)' }]}>
+        <View style={[styles.characterPanel, { backgroundColor: menuBg, left: 24, width: 250,padding:20, borderColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(79,70,229,0.1)' }]}>
           <AnimatedBackground />
           <Text style={[styles.filterTitle, { color: darkMode ? 'white' : '#1e293b', textAlign: isRTLText ? 'right' : 'left' }]}>{t.filters?.title}</Text>
           <Text style={[styles.filterLabel, { textAlign: isRTLText ? 'right' : 'left' }]}>{t.filters?.sortBy}</Text>
@@ -686,13 +742,13 @@ const styles = StyleSheet.create({
   notifBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#ef4444', width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#f8fafc' },
   tabBar: { marginHorizontal: 24, marginTop: 8, height: 56, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 16, padding: 4, flexDirection: 'row-reverse' },
   tabIndicator: { position: 'absolute', top: 4, bottom: 4, borderRadius: 12, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
-  tabBtn: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10 },
+  tabBtn: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 10, elevation: 3 },
   tabText: { fontSize: 13, fontWeight: '700' },
   mainScroll: { flex: 1, borderTopLeftRadius: 32, borderTopRightRadius: 32, marginTop: 12, marginHorizontal: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 48 },
   modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
   characterPanel: { position: 'absolute', top: 90, borderRadius: 28, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 18, borderWidth: 1.5, overflow: 'hidden' },
-  menuGridItem: { width: '38%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 20, padding: 8, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
+  menuGridItem: { width: '38%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 20, padding: 8, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
   menuGridText: { marginTop: 10, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   modalHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' },
   modalTitle: { fontSize: 20, fontWeight: '900' },
@@ -709,7 +765,7 @@ const styles = StyleSheet.create({
   filterLabel: { fontSize: 13, fontWeight: '700', color: '#64748b', marginBottom: 6 },
   filterGroup: { flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 16, justifyContent: 'flex-start' },
   filterOpt: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, margin: 4 },
-  primaryBtn: { backgroundColor: '#4f46e5', padding: 14, borderRadius: 16, alignItems: 'center', marginTop: 16, shadowColor: '#4f46e5', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+  primaryBtn: { backgroundColor: '#4f46e5', padding: 10, borderRadius: 16, alignItems: 'center', marginTop: 2, shadowColor: '#4f46e5', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
   primaryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   helpCard: { width: '100%', maxHeight: '80%', borderRadius: 32, padding: 24, shadowOpacity: 0.3, shadowRadius: 25, elevation: 20, borderWidth: 1.5, overflow: 'hidden' },
   helpTitle: { fontSize: 20, fontWeight: '900', marginBottom: 16, textAlign: 'center' },
