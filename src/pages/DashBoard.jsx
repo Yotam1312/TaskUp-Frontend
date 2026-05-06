@@ -440,7 +440,7 @@ export default function Dashboard({
   };
 
   const renderFilterOption = (label, value, current, setter) => (
-    <TouchableOpacity onPress={() => setter(value)} style={[styles.filterOpt, { backgroundColor: current === value ? '#4f46e5' : (darkMode ? '#334155' : '#f1f5f9') }]}>
+    <TouchableOpacity onPress={() => setter(value)} style={[styles.filterOpt, { backgroundColor: current === value ? '#4f46e5' : (darkMode ? '#553333' : '#f1f5f9') }]}>
       <Text style={{ color: current === value ? 'white' : (darkMode ? '#cbd5e1' : '#475569'), fontSize: 13, fontWeight: current === value ? '600' : '400' }}>{label}</Text>
     </TouchableOpacity>
   );

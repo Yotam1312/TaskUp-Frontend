@@ -16,7 +16,11 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.harel.taskup"
+      "bundleIdentifier": "com.harelYotam.unitask",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

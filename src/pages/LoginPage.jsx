@@ -99,24 +99,7 @@ const handleLogin = async () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* כפתור שפה עכשיו חי בתוך ה-ScrollView ומתיישר יפה ולא עולה על כלום באנדרואיד */}
-        <View style={{ width: '100%', alignItems: 'flex-start', marginBottom: 24 }}>
-          <TouchableOpacity
-            onPress={() => setLanguage(language === 'he' ? 'en' : 'he')}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              paddingHorizontal: 12, paddingVertical: 6,
-              backgroundColor: darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)',
-              borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-            }}
-            activeOpacity={0.8}
-          >
-            <Globe size={16} color={darkMode ? '#e2e8f0' : '#334155'} />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: darkMode ? '#e2e8f0' : '#334155' }}>
-              {language === 'he' ? 'English' : 'עברית'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+
 
         {/* Card */}
         <MotiView
