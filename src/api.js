@@ -123,3 +123,15 @@ export const fetchNotificationSettings = (accessToken) => fetchWithAuth('/api/no
 
 export const syncAssignments = (accessToken) => fetchWithAuth('/api/assignments/sync', { method: 'POST' });
 
+// משיכת היסטוריית התראות מהשרת
+export const fetchNotificationHistory = (accessToken) => 
+  fetchWithAuth('/api/notifications/history', { method: 'GET' });
+
+// מחיקת כל ההתראות מהשרת (כפתור "נקה התראות")
+export const clearNotificationHistory = (accessToken) => 
+  fetchWithAuth('/api/notifications/history/clear', { method: 'DELETE' });
+
+// (אופציונלי אבל מומלץ) עדכון השרת שההתראות נקראו כדי להעלים את הנקודה האדומה
+export const markNotificationsAsRead = (accessToken) => 
+  fetchWithAuth('/api/notifications/history/read', { method: 'PATCH' });
+

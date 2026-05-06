@@ -24,7 +24,7 @@ import {
   updateAssignmentNote,
   updateNotificationSettings
 } from '../api';
-
+// import { fetchNotificationHistory, clearNotificationHistory, markNotificationsAsRead } from '../api';
 
 
 
@@ -87,7 +87,7 @@ export default function Dashboard({
     let dueDateIso = null;   
 
     if (apiTask.due_date) {
-      const date = new Date(apiTask.due_date);
+      const date = new Date(apiTask.due_date + 'Z');
       const pad = (n) => n.toString().padStart(2, '0');
       dueDateDisplay = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
       dueTimeDisplay = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -216,32 +216,45 @@ export default function Dashboard({
   };
 
   const clearAllNotifications = async () => {
-    Alert.alert(
-      language === 'he' ? "ניקוי התראות" : "Clear Notifications",
-      language === 'he' ? "האם למחוק את כל ההתראות?" : "Delete all notifications?",
-      [
-        { text: language === 'he' ? "ביטול" : "Cancel", style: "cancel" },
-        {
-          text: language === 'he' ? "נקה" : "Clear", style: "destructive", onPress: async () => {
-            await AsyncStorage.removeItem('taskup_notifications');
-            setLocalNotifs([]);
-            setUnreadNotifCount(0);
-          }
+  Alert.alert(
+    language === 'he' ? "ניקוי התראות" : "Clear Notifications",
+    language === 'he' ? "האם למחוק את כל ההתראות?" : "Delete all notifications?",
+    [
+      { text: language === 'he' ? "ביטול" : "Cancel", style: "cancel" },
+      {
+        text: language === 'he' ? "נקה" : "Clear", style: "destructive", onPress: async () => {
+          // מחיקה מהשרת בעתיד:
+          // try { await clearNotificationHistory(sessionAccessToken); } catch(e) {}
+          
+          await AsyncStorage.removeItem('taskup_notifications');
+          setLocalNotifs([]);
+          setUnreadNotifCount(0);
         }
-      ]
-    );
-  };
+      }
+    ]
+  );
+};
 
-  const loadNotifications = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('taskup_notifications');
-      let parsed = stored ? JSON.parse(stored) : [];
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      const filtered = parsed.filter(n => n.timestamp > thirtyDaysAgo);
-      setLocalNotifs(filtered.sort((a, b) => b.timestamp - a.timestamp));
-      setUnreadNotifCount(filtered.filter(n => !n.read).length);
-    } catch (e) { }
-  };
+
+const loadNotifications = async () => {
+  if (!sessionAccessToken) return;
+  try {
+    // בעתיד, כשזה יהיה מוכן בשרת:
+    // const history = await fetchNotificationHistory(sessionAccessToken);
+    // setLocalNotifs(history);
+    // setUnreadNotifCount(history.filter(n => !n.is_read).length);
+    
+    // -- בינתיים (שומר על AsyncStorage כדי לא לשבור כרגע) --
+    const stored = await AsyncStorage.getItem('taskup_notifications');
+    let parsed = stored ? JSON.parse(stored) : [];
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const filtered = parsed.filter(n => n.timestamp > thirtyDaysAgo);
+    setLocalNotifs(filtered.sort((a, b) => b.timestamp - a.timestamp));
+    setUnreadNotifCount(filtered.filter(n => !n.read).length);
+  } catch (e) {
+    console.log("Error loading notifications:", e);
+  }
+};
 
   useEffect(() => {
     loadNotifications();
@@ -264,13 +277,19 @@ export default function Dashboard({
     return () => subscription.remove();
   }, [sessionAccessToken]);
 
-  const openNotifications = async () => {
-    setIsNotifModalOpen(true);
-    const updated = localNotifs.map(n => ({ ...n, read: true }));
-    setLocalNotifs(updated);
-    setUnreadNotifCount(0);
-    await AsyncStorage.setItem('taskup_notifications', JSON.stringify(updated));
-  };
+const openNotifications = async () => {
+  setIsNotifModalOpen(true);
+  
+  // עדכון קריאה בשרת בעתיד:
+  // if (unreadNotifCount > 0) {
+  //   try { await markNotificationsAsRead(sessionAccessToken); } catch(e) {}
+  // }
+
+  const updated = localNotifs.map(n => ({ ...n, read: true }));
+  setLocalNotifs(updated);
+  setUnreadNotifCount(0);
+  await AsyncStorage.setItem('taskup_notifications', JSON.stringify(updated));
+};
 
   const getTimeAgo = (timestamp) => {
     const diffMins = Math.floor((Date.now() - timestamp) / 60000);
@@ -308,6 +327,15 @@ export default function Dashboard({
   };
 
   useEffect(() => { loadData(); }, [sessionAccessToken]);
+
+  useEffect(() => {
+    if (sessionAccessToken && expoPushToken) {
+      registerDeviceToken(sessionAccessToken, expoPushToken, language)
+        .catch(err => console.error("Failed to save token to DB", err));
+    }
+  }, [sessionAccessToken, expoPushToken]);
+
+
 
   useEffect(() => {
   setTasks(prevTasks => prevTasks.map(task => {
