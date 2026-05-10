@@ -6,7 +6,10 @@
       "Bash(find \"/a/Download/TaskUp_UI \\(1\\)/TaskUp_UI\" -type f -name \"*.json\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.md\" -o -name \"*.yml\" -o -name \"*.yaml\")",
       "Bash(ls -la \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI\")",
       "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI/src\" -type f \\\\\\( -name \"*.js\" -o -name \"*.jsx\" -o -name \"*.ts\" -o -name \"*.tsx\" \\\\\\))",
-      "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI\" -maxdepth 2 \\\\\\( -name \".env*\" -o -name \"*.env\" \\\\\\))"
+      "Bash(find \"a:/Download/TaskUp_UI \\(1\\)/TaskUp_UI\" -maxdepth 2 \\\\\\( -name \".env*\" -o -name \"*.env\" \\\\\\))",
+      "Bash(Get-ChildItem -Path \"a:\\\\MyTask_frontend\\\\TaskUp-Frontend\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }
