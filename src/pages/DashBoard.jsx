@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
-  StyleSheet, Pressable, Platform, Alert, Modal
+  StyleSheet, Pressable, Platform, Alert, Modal, ActivityIndicator, Linking
 } from 'react-native';
 import { X, CheckCircle, Clock, Archive, LogOut, Settings, CircleCheckBig, Folder, ChevronDown, ChevronUp, HelpCircle, ArrowRight, ArrowLeft, Bell, Filter } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -50,7 +50,7 @@ const NineDotsIcon = ({ color, size = 26 }) => {
 
 export default function Dashboard({
   route, language, setLanguage, darkMode, toggleDarkMode,
-  notificationsSettings, setNotificationsSettings, expoPushToken, t, accessToken, setAccessToken, username, setUsername,
+  notificationsSettings, setNotificationsSettings, expoPushToken, requestPushPermission, t, accessToken, setAccessToken, username, setUsername,
 }) {
   const { access_token = '' } = route?.params || {};
   const navigation = useNavigation();
@@ -59,7 +59,7 @@ export default function Dashboard({
   const [activeTab, setActiveTab] = useState('pending');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
-  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [tabBarWidth, setTabBarWidth] = useState(0);
@@ -69,10 +69,52 @@ export default function Dashboard({
   const [tasks, setTasks] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedCourses, setExpandedCourses] = useState({});
-  const [localNotifs, setLocalNotifs] = useState([]);
-  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+
   const [sortOrder, setSortOrder] = useState('dateAsc');
   const [timeFilter, setTimeFilter] = useState('all');
+
+  useEffect(() => {
+    const checkFirstTimePush = async () => {
+      if (!sessionAccessToken) return;
+      const hasAsked = await AsyncStorage.getItem('taskup_push_asked');
+
+      if (!hasAsked) {
+        Alert.alert(
+          language === 'he' ? "קבלת התראות" : "Push Notifications",
+          language === 'he'
+            ? "כדי שנוכל לעדכן אותך על מטלות חדשות ומועדי הגשה, מומלץ לאשר התראות."
+            : "To keep you updated on assignments, please allow notifications.",
+          [
+            {
+              text: language === 'he' ? "לא תודה" : "No thanks",
+              style: "cancel",
+              onPress: async () => await AsyncStorage.setItem('taskup_push_asked', 'true')
+            },
+            {
+              text: language === 'he' ? "הפעל" : "Enable",
+              onPress: async () => {
+                await AsyncStorage.setItem('taskup_push_asked', 'true');
+                if (requestPushPermission) {
+                  const isGranted = await requestPushPermission();
+                  if (isGranted) {
+                    const newSettings = { daysBefore: ["1d"], newAssignment: true, dateChange: true };
+                    setNotificationsSettings(newSettings);
+                    updateNotificationSettings(sessionAccessToken, {
+                      hours_before: [24],
+                      notify_on_new: true,
+                      notify_on_change: true
+                    }).catch(() => { });
+                  }
+                }
+              }
+            }
+          ]
+        );
+      }
+    };
+    checkFirstTimePush();
+  }, [sessionAccessToken]);
 
   // --- אנימציות רקע (Blobs) ---
   const blob1Anim = useRef(new Animated.Value(0)).current;
@@ -83,8 +125,8 @@ export default function Dashboard({
   // מחקנו את הפרמטר language מתוך הסוגריים!
   function transformTask(apiTask) {
     let dueDateDisplay = language === 'he' ? "אין מועד הגשה" : "No due date";
-    let dueTimeDisplay = ""; 
-    let dueDateIso = null;   
+    let dueTimeDisplay = "";
+    let dueDateIso = null;
 
     if (apiTask.due_date) {
       const date = new Date(apiTask.due_date + 'Z');
@@ -171,12 +213,20 @@ export default function Dashboard({
       try {
         const settings = await fetchNotificationSettings(accessToken);
         if (settings) {
+          // בודקים הרשאת מערכת אמיתית כדי לא להציג כפתור דלוק סתם לבודק של אפל
+          const { status } = await Notifications.getPermissionsAsync();
+          const hasPermission = status === 'granted';
+
           const mappedDays = mapHoursToUI(settings.hours_before);
           setNotificationsSettings({
-            daysBefore: mappedDays,
-            newAssignment: settings.notify_on_new_assignment,
-            dateChange: settings.notify_on_due_date_change,
+            daysBefore: hasPermission ? mappedDays : [],
+            newAssignment: hasPermission ? settings.notify_on_new_assignment : false,
+            dateChange: hasPermission ? settings.notify_on_due_date_change : false,
           });
+
+          if (!hasPermission && (settings.notify_on_new_assignment || settings.notify_on_due_date_change || mappedDays.length > 0)) {
+            updateNotificationSettings(accessToken, { hours_before: [], notify_on_new: false, notify_on_change: false }).catch(() => { });
+          }
         }
       } catch (error) {
         console.error("Failed to load settings", error);
@@ -203,104 +253,11 @@ export default function Dashboard({
     }).start();
   }, [activeTab]);
 
-  const addMockNotifications = async () => {
-    const mockData = Array.from({ length: 15 }).map((_, i) => ({
-      id: Math.random().toString(),
-      title: i % 3 === 0 ? "מטלה חדשה" : "עדכון תאריך",
-      body: `מטלה ב${i % 2 === 0 ? "מערכות הפעלה" : "אלגוריתמים"} עודכנה.`,
-      timestamp: Date.now() - (i * 1000 * 60 * 60 * 4),
-      read: false
-    }));
-    await AsyncStorage.setItem('taskup_notifications', JSON.stringify(mockData));
-    loadNotifications();
-  };
-
-  const clearAllNotifications = async () => {
-  Alert.alert(
-    language === 'he' ? "ניקוי התראות" : "Clear Notifications",
-    language === 'he' ? "האם למחוק את כל ההתראות?" : "Delete all notifications?",
-    [
-      { text: language === 'he' ? "ביטול" : "Cancel", style: "cancel" },
-      {
-        text: language === 'he' ? "נקה" : "Clear", style: "destructive", onPress: async () => {
-          // מחיקה מהשרת בעתיד:
-          // try { await clearNotificationHistory(sessionAccessToken); } catch(e) {}
-          
-          await AsyncStorage.removeItem('taskup_notifications');
-          setLocalNotifs([]);
-          setUnreadNotifCount(0);
-        }
-      }
-    ]
-  );
-};
 
 
-const loadNotifications = async () => {
-  if (!sessionAccessToken) return;
-  try {
-    // בעתיד, כשזה יהיה מוכן בשרת:
-    // const history = await fetchNotificationHistory(sessionAccessToken);
-    // setLocalNotifs(history);
-    // setUnreadNotifCount(history.filter(n => !n.is_read).length);
-    
-    // -- בינתיים (שומר על AsyncStorage כדי לא לשבור כרגע) --
-    const stored = await AsyncStorage.getItem('taskup_notifications');
-    let parsed = stored ? JSON.parse(stored) : [];
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const filtered = parsed.filter(n => n.timestamp > thirtyDaysAgo);
-    setLocalNotifs(filtered.sort((a, b) => b.timestamp - a.timestamp));
-    setUnreadNotifCount(filtered.filter(n => !n.read).length);
-  } catch (e) {
-    console.log("Error loading notifications:", e);
-  }
-};
 
-  useEffect(() => {
-    loadNotifications();
-    const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
-      try {
-        const newNotif = {
-          id: notification.request.identifier,
-          title: notification.request.content.title,
-          body: notification.request.content.body,
-          timestamp: Date.now(),
-          read: false
-        };
-        const stored = await AsyncStorage.getItem('taskup_notifications');
-        const updated = [newNotif, ...(stored ? JSON.parse(stored) : [])];
-        await AsyncStorage.setItem('taskup_notifications', JSON.stringify(updated));
-        loadNotifications();
-        refreshLocalData();
-      } catch (e) { }
-    });
-    return () => subscription.remove();
-  }, [sessionAccessToken]);
 
-const openNotifications = async () => {
-  setIsNotifModalOpen(true);
-  
-  // עדכון קריאה בשרת בעתיד:
-  // if (unreadNotifCount > 0) {
-  //   try { await markNotificationsAsRead(sessionAccessToken); } catch(e) {}
-  // }
 
-  const updated = localNotifs.map(n => ({ ...n, read: true }));
-  setLocalNotifs(updated);
-  setUnreadNotifCount(0);
-  await AsyncStorage.setItem('taskup_notifications', JSON.stringify(updated));
-};
-
-  const getTimeAgo = (timestamp) => {
-    const diffMins = Math.floor((Date.now() - timestamp) / 60000);
-    if (diffMins < 1) return t.notificationsInbox?.justNow;
-    if (diffMins < 60) return t.notificationsInbox?.minutesAgo.replace('{time}', diffMins);
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return t.notificationsInbox?.hoursAgo.replace('{time}', diffHours);
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return t.notificationsInbox?.daysAgo.replace('{time}', diffDays);
-    return t.notificationsInbox?.weeksAgo;
-  };
 
   const refreshLocalData = async () => {
     if (!sessionAccessToken) return;
@@ -338,13 +295,13 @@ const openNotifications = async () => {
 
 
   useEffect(() => {
-  setTasks(prevTasks => prevTasks.map(task => {
-    if (!task.dueDateIso) {
-      return { ...task, dueDateDisplay: language === 'he' ? "אין מועד הגשה" : "No due date" };
-    }
-    return task;
-  }));
-}, [language]);
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (!task.dueDateIso) {
+        return { ...task, dueDateDisplay: language === 'he' ? "אין מועד הגשה" : "No due date" };
+      }
+      return task;
+    }));
+  }, [language]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -398,7 +355,7 @@ const openNotifications = async () => {
     if (timeFilter === 'nextWeek') return diffDays >= 0 && diffDays <= 7;
     if (timeFilter === 'nextMonth') return diffDays >= 0 && diffDays <= 30;
     return true;
-}).sort((a, b) => {
+  }).sort((a, b) => {
     if (sortOrder === 'dateAsc') {
       if (!a.dueDateIso) return 1;
       if (!b.dueDateIso) return -1;
@@ -543,10 +500,7 @@ const openNotifications = async () => {
           <TouchableOpacity onPress={() => setIsMenuOpen(true)} style={styles.headerIcon} activeOpacity={0.7}>
             <NineDotsIcon size={24} color={iconColor} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={openNotifications} style={[styles.headerIcon, { position: 'relative' }]} activeOpacity={0.7}>
-            <Bell size={24} color={iconColor} />
-            {unreadNotifCount > 0 && <View style={styles.notifBadge} />}
-          </TouchableOpacity>
+
           {(activeTab === 'pending' || activeTab === 'completed') && (
             <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} style={styles.headerIcon} activeOpacity={0.7}>
               <Filter size={24} color={iconColor} />
@@ -568,7 +522,17 @@ const openNotifications = async () => {
 
           <ScrollView ref={scrollViewRef} style={styles.mainScroll} contentContainerStyle={{ paddingBottom: scrollPadding + insets.bottom }}>
             <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
-              {isLoading ? (
+              {isLoading && tasks.length === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
+                  <ActivityIndicator size="large" color={darkMode ? '#a5b4fc' : '#4f46e5'} />
+                  <Text style={{ marginTop: 24, fontSize: 18, fontWeight: '800', color: darkMode ? 'white' : '#1e293b', textAlign: 'center' }}>
+                    {language === 'he' ? "מסנכרן נתונים מהמודל..." : "Syncing data from Moodle..."}
+                  </Text>
+                  <Text style={{ marginTop: 12, fontSize: 14, color: darkMode ? '#94a3b8' : '#64748b', textAlign: 'center', paddingHorizontal: 30, lineHeight: 22 }}>
+                    {language === 'he' ? "הסנכרון הראשוני אוסף את כל הקורסים והמטלות שלך.\nפעולה זו עשויה לקחת כדקה, תודה על הסבלנות!" : "Initial sync gathers all your courses and tasks.\nThis may take up to a minute, thank you for your patience!"}
+                  </Text>
+                </View>
+              ) : isLoading ? (
                 <>
                   <TaskCardSkeleton darkMode={darkMode} />
                   <TaskCardSkeleton darkMode={darkMode} />
@@ -670,7 +634,7 @@ const openNotifications = async () => {
       {/* Settings Tab */}
       {activeTab === 'settings' && (
         <View style={{ paddingHorizontal: 8, paddingBottom: insets.bottom, flex: 1 }}>
-          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} />
+          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} requestPushPermission={requestPushPermission} expoPushToken={expoPushToken} />
         </View>
       )}
 
@@ -708,48 +672,10 @@ const openNotifications = async () => {
         </View>
       </Modal>
 
-      {/* התראות */}
-      <Modal visible={isNotifModalOpen} transparent animationType="fade" onRequestClose={() => setIsNotifModalOpen(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setIsNotifModalOpen(false)} />
-        <View style={[styles.characterPanel, { backgroundColor: menuBg, left: 24, width: 320, maxHeight: '50%', borderColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(79,70,229,0.1)' }]}>
-          <AnimatedBackground />
-          <View style={styles.modalHeader}>
-            <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
-              <Bell size={22} color={darkMode ? 'white' : '#1e293b'} />
-              <Text style={[styles.modalTitle, { color: darkMode ? 'white' : '#1e293b' }]}>
-                {t.notificationsInbox?.title}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={() => setIsNotifModalOpen(false)} style={styles.closeBtn}><X size={20} color={menuTextColor} /></TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0, marginBottom: 8 }}>
-            {localNotifs.length === 0 ? <Text style={styles.emptyText}>{t.notificationsInbox?.empty}</Text> :
-              localNotifs.map((n, i) => (
-                <View key={i} style={[styles.notifItem, { borderWidth: 0.8, borderColor: '#a5a5a56b', backgroundColor: darkMode ? 'rgba(255, 0, 0, 0.04)' : 'rgba(0,0,0,0.02)', alignItems: isRTLText ? 'flex-end' : 'flex-start' }]}>
-                  <Text style={[styles.notifTitle, { color: darkMode ? 'white' : '#1e293b', textAlign: isRTLText ? 'right' : 'left' }]}>{n.title}</Text>
-                  <Text style={[styles.notifBody, { color: darkMode ? '#cbd5e1' : '#475569', textAlign: isRTLText ? 'right' : 'left' }]}>{n.body}</Text>
-                  <Text style={styles.notifTime}>{getTimeAgo(n.timestamp)}</Text>
-                </View>
-              ))
-            }
-          </ScrollView>
-
-          {localNotifs.length > 0 && (
-            <View style={styles.fixedFooter}>
-              <View style={[styles.divider, { backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }]} />
-              <TouchableOpacity onPress={clearAllNotifications} style={styles.clearBtn}>
-                <Text style={styles.clearBtnText}>{language === 'he' ? "נקה התראות" : "Clear Notifications"}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Modal>
-
       {/* פילטר */}
       <Modal visible={isFilterModalOpen} transparent animationType="fade" onRequestClose={() => setIsFilterModalOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setIsFilterModalOpen(false)} />
-        <View style={[styles.characterPanel, { backgroundColor: menuBg, left: 24, width: 250,padding:20, borderColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(79,70,229,0.1)' }]}>
+        <View style={[styles.characterPanel, { backgroundColor: menuBg, left: 24, width: 250, padding: 20, borderColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(79,70,229,0.1)' }]}>
           <AnimatedBackground />
           <Text style={[styles.filterTitle, { color: darkMode ? 'white' : '#1e293b', textAlign: isRTLText ? 'right' : 'left' }]}>{t.filters?.title}</Text>
           <Text style={[styles.filterLabel, { textAlign: isRTLText ? 'right' : 'left' }]}>{t.filters?.sortBy}</Text>
@@ -771,6 +697,22 @@ const openNotifications = async () => {
               {t.helpModal.body.split('\n').map((line, idx) => {
                 if (!line.trim()) return null;
                 const isHeader = /^.+:\s*$/.test(line.trim());
+
+                // בדיקה אם השורה מכילה את האתר שלנו והפיכתו ללחיץ
+                if (line.includes('unitask.net')) {
+                  const parts = line.split('unitask.net');
+                  return (
+                    <View key={idx} style={[styles.helpLine, { flexDirection: isRTLText ? 'row-reverse' : 'row' }]}>
+                      {!isHeader && <View style={styles.bullet} />}
+                      <Text style={[styles.helpText, { color: darkMode ? '#cbd5e1' : '#475569', textAlign: isRTLText ? 'right' : 'left' }]}>
+                        {parts[0]}
+                        <Text style={{ color: '#4f46e5', textDecorationLine: 'underline' }} onPress={() => Linking.openURL('https://unitask.net')}>unitask.net</Text>
+                        {parts[1]}
+                      </Text>
+                    </View>
+                  );
+                }
+
                 return (
                   <View key={idx} style={[styles.helpLine, { flexDirection: isRTLText ? 'row-reverse' : 'row' }]}>
                     {!isHeader && <View style={styles.bullet} />}

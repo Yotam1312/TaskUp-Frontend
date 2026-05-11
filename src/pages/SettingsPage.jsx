@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing, Platform, Alert, Linking } from 'react-native';
 import {
   ArrowRight, ArrowLeft, Moon, Globe, Bell,
   Check, RefreshCw, AlertCircle
 } from 'lucide-react-native';
 import { updateNotificationSettings } from '../api';
+import { sendExpoPushNotification } from '../services/pushService';
 
 const SaveStatus = ({ status, darkMode }) => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -58,11 +59,12 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function SettingsPage({
   accessToken,darkMode, toggleDarkMode, language, setLanguage,
-  notificationsSettings, setNotificationsSettings, t, customBackAction,
+  notificationsSettings, setNotificationsSettings, t, customBackAction, requestPushPermission, expoPushToken
 }) {
   const isRTL = true;
   const notificationOptions = ["7d", "3d", "2d", "1d", "12h", "8h", "5h", "1h"];
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [testPushStatus, setTestPushStatus] = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const syncWithBackend = async (updatedSettings) => {
   setSaveStatus('saving'); 
 
@@ -91,9 +93,66 @@ export default function SettingsPage({
     setSaveStatus('error');
   }
 };
-  const handleDayToggle = (option) => {
+  const checkAndRequestPushPermissions = async () => {
+    if (requestPushPermission) {
+      const isGranted = await requestPushPermission();
+      if (!isGranted) {
+        Alert.alert(
+          language === 'he' ? 'הרשאות חסרות' : 'Permissions Required',
+          language === 'he' 
+            ? 'כדי לקבל התראות עליך לאשר אותן בהגדרות המכשיר.' 
+            : 'To receive notifications, please enable them in your device settings.',
+          [
+            { text: language === 'he' ? 'ביטול' : 'Cancel', style: 'cancel' },
+            { text: language === 'he' ? 'הגדרות' : 'Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const handleSendTestPush = async () => {
+    if (!expoPushToken) {
+      Alert.alert(
+        language === 'he' ? 'אין טוקן' : 'No Token',
+        language === 'he' ? 'לא נמצא טוקן התראות. נסה לאשר הרשאות קודם.' : 'No push token found. Try enabling permissions first.'
+      );
+      return;
+    }
+
+    setTestPushStatus('sending');
+    try {
+      await sendExpoPushNotification({
+        to: expoPushToken,
+        title: language === 'he' ? 'בדיקת התראה' : 'Test Notification',
+        body: language === 'he' ? 'אם אתה רואה את זה - ההתראות עובדות! 🎉' : 'If you see this, push notifications are working! 🎉',
+        sound: 'default',
+      });
+      setTestPushStatus('sent');
+      setTimeout(() => setTestPushStatus('idle'), 3000);
+    } catch (err) {
+      console.error('Test push failed:', err);
+      setTestPushStatus('error');
+      Alert.alert(
+        language === 'he' ? 'שליחה נכשלה' : 'Send Failed',
+        err.message
+      );
+      setTimeout(() => setTestPushStatus('idle'), 3000);
+    }
+  };
+
+  const handleDayToggle = async (option) => {
   if (!setNotificationsSettings) return;
   
+  const isTurningOn = !notificationsSettings?.daysBefore?.includes(option);
+  if (isTurningOn) {
+    const hasPermission = await checkAndRequestPushPermissions();
+    if (!hasPermission) return; // עוצר הכל אם המשתמש סירב לאפל
+  }
+
   setNotificationsSettings(prev => {
     const cur = prev.daysBefore || [];
     const nextDays = cur.includes(option) 
@@ -101,22 +160,22 @@ export default function SettingsPage({
       : [...cur, option];
     
     const next = { ...prev, daysBefore: nextDays };
-    
-    console.log("Calling sync for daysBefore:", nextDays);
     syncWithBackend(next); 
-    
     return next;
   });
 };
 
-const handleToggleChange = (key, value) => {
+const handleToggleChange = async (key, value) => {
   if (!setNotificationsSettings) return;
   
+  if (value === true) {
+    const hasPermission = await checkAndRequestPushPermissions();
+    if (!hasPermission) return; // מונע מהמתג להידלק אם אין הרשאה!
+  }
+
   setNotificationsSettings(prev => {
     const next = { ...prev, [key]: value };
-    console.log("Calling sync for:", key, value);
     syncWithBackend(next); 
-    
     return next;
   });
 };
@@ -329,6 +388,47 @@ const handleToggleChange = (key, value) => {
               </View>
             ))}
           </View>
+
+          <TouchableOpacity
+            onPress={handleSendTestPush}
+            disabled={testPushStatus === 'sending'}
+            activeOpacity={0.8}
+            style={{
+              marginTop: 16,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 14,
+              backgroundColor: testPushStatus === 'sent' ? '#10b981' : testPushStatus === 'error' ? '#ef4444' : '#4f46e5',
+              alignItems: 'center',
+              opacity: testPushStatus === 'sending' ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
+              {testPushStatus === 'sending'
+                ? (language === 'he' ? 'שולח...' : 'Sending...')
+                : testPushStatus === 'sent'
+                  ? (language === 'he' ? 'נשלח בהצלחה!' : 'Sent successfully!')
+                  : testPushStatus === 'error'
+                    ? (language === 'he' ? 'שגיאה' : 'Error')
+                    : (language === 'he' ? 'שלח התראת בדיקה' : 'Send Test Notification')}
+            </Text>
+          </TouchableOpacity>
+
+          {expoPushToken && (
+            <Text
+              style={{
+                fontSize: 11,
+                color: textSecondary,
+                marginTop: 8,
+                textAlign: isRTL ? 'right' : 'left',
+                fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+              }}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              Token: {expoPushToken}
+            </Text>
+          )}
         </View>
       </View>
     </ScrollView>
