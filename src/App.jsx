@@ -61,14 +61,14 @@ export default function App() {
 
   const [notificationsSettings, setNotificationsSettings] = useState({
     daysBefore: [],
-    newAssignment: true,
-    dateChange: true,
+    newAssignment: false,
+    dateChange: false,
   });
 
   const toggleDarkMode = () => setColorScheme(darkMode ? 'light' : 'dark');
   const t = translations[language];
 
-  async function registerForPushNotificationsAsync() {
+  async function registerForPushNotificationsAsync(shouldRequest = false) {
     let token;
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -84,13 +84,17 @@ export default function App() {
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        if (shouldRequest) {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        } else {
+          // חוקי אפל: לא קופצים למשתמש בעלייה הראשונה
+          return null;
+        }
       }
 
       if (finalStatus !== 'granted') {
-        Alert.alert('שגיאה', 'לא התקבל אישור לשליחת התראות');
-        return;
+        return null;
       }
 
       try {
@@ -107,7 +111,6 @@ export default function App() {
     }
     return token;
   }
-
   useEffect(() => {
     let isMounted = true;
     const hydratePreferences = async () => {
@@ -176,9 +179,12 @@ export default function App() {
       }
     };
 
-    hydratePreferences();
+hydratePreferences();
     hydrateAuthToken();
-    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    // שולחים false כדי שזה רק יבדוק בסתר ולא יקפיץ חלון מול אפל
+    registerForPushNotificationsAsync(false).then(token => {
+      if (token) setExpoPushToken(token);
+    });
 
     return () => {
       isMounted = false;
@@ -261,6 +267,11 @@ export default function App() {
                     notificationsSettings={notificationsSettings}
                     setNotificationsSettings={setNotificationsSettings}
                     expoPushToken={expoPushToken}
+                    requestPushPermission={async () => {
+                      const token = await registerForPushNotificationsAsync(true);
+                      if (token) setExpoPushToken(token);
+                      return !!token;
+                    }}
                     accessToken={accessToken}
                     setAccessToken={setAccessToken}
                     username={username}

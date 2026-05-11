@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Easing, Platform, Alert, Linking } from 'react-native';
 import {
   ArrowRight, ArrowLeft, Moon, Globe, Bell,
   Check, RefreshCw, AlertCircle
@@ -58,7 +58,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function SettingsPage({
   accessToken,darkMode, toggleDarkMode, language, setLanguage,
-  notificationsSettings, setNotificationsSettings, t, customBackAction,
+  notificationsSettings, setNotificationsSettings, t, customBackAction, requestPushPermission
 }) {
   const isRTL = true;
   const notificationOptions = ["7d", "3d", "2d", "1d", "12h", "8h", "5h", "1h"];
@@ -91,9 +91,36 @@ export default function SettingsPage({
     setSaveStatus('error');
   }
 };
-  const handleDayToggle = (option) => {
+const checkAndRequestPushPermissions = async () => {
+    if (requestPushPermission) {
+      const isGranted = await requestPushPermission();
+      if (!isGranted) {
+        Alert.alert(
+          language === 'he' ? 'הרשאות חסרות' : 'Permissions Required',
+          language === 'he' 
+            ? 'כדי לקבל התראות עליך לאשר אותן בהגדרות המכשיר.' 
+            : 'To receive notifications, please enable them in your device settings.',
+          [
+            { text: language === 'he' ? 'ביטול' : 'Cancel', style: 'cancel' },
+            { text: language === 'he' ? 'הגדרות' : 'Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const handleDayToggle = async (option) => {
   if (!setNotificationsSettings) return;
   
+  const isTurningOn = !notificationsSettings?.daysBefore?.includes(option);
+  if (isTurningOn) {
+    const hasPermission = await checkAndRequestPushPermissions();
+    if (!hasPermission) return; // עוצר הכל אם המשתמש סירב לאפל
+  }
+
   setNotificationsSettings(prev => {
     const cur = prev.daysBefore || [];
     const nextDays = cur.includes(option) 
@@ -101,22 +128,22 @@ export default function SettingsPage({
       : [...cur, option];
     
     const next = { ...prev, daysBefore: nextDays };
-    
-    console.log("Calling sync for daysBefore:", nextDays);
     syncWithBackend(next); 
-    
     return next;
   });
 };
 
-const handleToggleChange = (key, value) => {
+const handleToggleChange = async (key, value) => {
   if (!setNotificationsSettings) return;
   
+  if (value === true) {
+    const hasPermission = await checkAndRequestPushPermissions();
+    if (!hasPermission) return; // מונע מהמתג להידלק אם אין הרשאה!
+  }
+
   setNotificationsSettings(prev => {
     const next = { ...prev, [key]: value };
-    console.log("Calling sync for:", key, value);
     syncWithBackend(next); 
-    
     return next;
   });
 };

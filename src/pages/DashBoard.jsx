@@ -50,7 +50,7 @@ const NineDotsIcon = ({ color, size = 26 }) => {
 
 export default function Dashboard({
   route, language, setLanguage, darkMode, toggleDarkMode,
-  notificationsSettings, setNotificationsSettings, expoPushToken, t, accessToken, setAccessToken, username, setUsername,
+  notificationsSettings, setNotificationsSettings, expoPushToken, requestPushPermission, t, accessToken, setAccessToken, username, setUsername,
 }) {
   const { access_token = '' } = route?.params || {};
   const navigation = useNavigation();
@@ -165,18 +165,26 @@ export default function Dashboard({
     return hoursArray.map((h) => reverseMapping[h]).filter(Boolean);
   };
 
-  useEffect(() => {
+useEffect(() => {
     const loadSettings = async () => {
       if (!accessToken) return;
       try {
         const settings = await fetchNotificationSettings(accessToken);
         if (settings) {
+          // בודקים הרשאת מערכת אמיתית כדי לא להציג כפתור דלוק סתם לבודק של אפל
+          const { status } = await Notifications.getPermissionsAsync();
+          const hasPermission = status === 'granted';
+
           const mappedDays = mapHoursToUI(settings.hours_before);
           setNotificationsSettings({
-            daysBefore: mappedDays,
-            newAssignment: settings.notify_on_new_assignment,
-            dateChange: settings.notify_on_due_date_change,
+            daysBefore: hasPermission ? mappedDays : [],
+            newAssignment: hasPermission ? settings.notify_on_new_assignment : false,
+            dateChange: hasPermission ? settings.notify_on_due_date_change : false,
           });
+          
+          if (!hasPermission && (settings.notify_on_new_assignment || settings.notify_on_due_date_change || mappedDays.length > 0)) {
+            updateNotificationSettings(accessToken, { hours_before: [], notify_on_new: false, notify_on_change: false }).catch(() => {});
+          }
         }
       } catch (error) {
         console.error("Failed to load settings", error);
@@ -670,7 +678,7 @@ const openNotifications = async () => {
       {/* Settings Tab */}
       {activeTab === 'settings' && (
         <View style={{ paddingHorizontal: 8, paddingBottom: insets.bottom, flex: 1 }}>
-          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} />
+          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} requestPushPermission={requestPushPermission} />
         </View>
       )}
 
