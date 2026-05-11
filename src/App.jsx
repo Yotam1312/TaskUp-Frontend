@@ -101,7 +101,10 @@ export default function App() {
         const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
         if (!projectId) throw new Error('Project ID not found');
 
-        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        token = (await Notifications.getExpoPushTokenAsync({ 
+          projectId: projectId,
+          development: false 
+        })).data;
         console.log("Your Expo Push Token:", token);
       } catch (e) {
         console.log("Error getting token:", e);
