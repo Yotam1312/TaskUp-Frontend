@@ -634,7 +634,7 @@ export default function Dashboard({
       {/* Settings Tab */}
       {activeTab === 'settings' && (
         <View style={{ paddingHorizontal: 8, paddingBottom: insets.bottom, flex: 1 }}>
-          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} requestPushPermission={requestPushPermission} />
+          <SettingsPage customBackAction={() => setActiveTab('pending')} accessToken={accessToken} t={t} language={language} setLanguage={setLanguage} darkMode={darkMode} toggleDarkMode={toggleDarkMode} notificationsSettings={notificationsSettings} setNotificationsSettings={setNotificationsSettings} requestPushPermission={requestPushPermission} expoPushToken={expoPushToken} />
         </View>
       )}
 

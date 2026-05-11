@@ -5,6 +5,7 @@ import {
   Check, RefreshCw, AlertCircle
 } from 'lucide-react-native';
 import { updateNotificationSettings } from '../api';
+import { sendExpoPushNotification } from '../services/pushService';
 
 const SaveStatus = ({ status, darkMode }) => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -58,11 +59,12 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function SettingsPage({
   accessToken,darkMode, toggleDarkMode, language, setLanguage,
-  notificationsSettings, setNotificationsSettings, t, customBackAction, requestPushPermission
+  notificationsSettings, setNotificationsSettings, t, customBackAction, requestPushPermission, expoPushToken
 }) {
   const isRTL = true;
   const notificationOptions = ["7d", "3d", "2d", "1d", "12h", "8h", "5h", "1h"];
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [testPushStatus, setTestPushStatus] = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
   const syncWithBackend = async (updatedSettings) => {
   setSaveStatus('saving'); 
 
@@ -91,7 +93,7 @@ export default function SettingsPage({
     setSaveStatus('error');
   }
 };
-const checkAndRequestPushPermissions = async () => {
+  const checkAndRequestPushPermissions = async () => {
     if (requestPushPermission) {
       const isGranted = await requestPushPermission();
       if (!isGranted) {
@@ -110,6 +112,36 @@ const checkAndRequestPushPermissions = async () => {
       return true;
     }
     return false;
+  };
+
+  const handleSendTestPush = async () => {
+    if (!expoPushToken) {
+      Alert.alert(
+        language === 'he' ? 'אין טוקן' : 'No Token',
+        language === 'he' ? 'לא נמצא טוקן התראות. נסה לאשר הרשאות קודם.' : 'No push token found. Try enabling permissions first.'
+      );
+      return;
+    }
+
+    setTestPushStatus('sending');
+    try {
+      await sendExpoPushNotification({
+        to: expoPushToken,
+        title: language === 'he' ? 'בדיקת התראה' : 'Test Notification',
+        body: language === 'he' ? 'אם אתה רואה את זה - ההתראות עובדות! 🎉' : 'If you see this, push notifications are working! 🎉',
+        sound: 'default',
+      });
+      setTestPushStatus('sent');
+      setTimeout(() => setTestPushStatus('idle'), 3000);
+    } catch (err) {
+      console.error('Test push failed:', err);
+      setTestPushStatus('error');
+      Alert.alert(
+        language === 'he' ? 'שליחה נכשלה' : 'Send Failed',
+        err.message
+      );
+      setTimeout(() => setTestPushStatus('idle'), 3000);
+    }
   };
 
   const handleDayToggle = async (option) => {
@@ -356,6 +388,47 @@ const handleToggleChange = async (key, value) => {
               </View>
             ))}
           </View>
+
+          <TouchableOpacity
+            onPress={handleSendTestPush}
+            disabled={testPushStatus === 'sending'}
+            activeOpacity={0.8}
+            style={{
+              marginTop: 16,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 14,
+              backgroundColor: testPushStatus === 'sent' ? '#10b981' : testPushStatus === 'error' ? '#ef4444' : '#4f46e5',
+              alignItems: 'center',
+              opacity: testPushStatus === 'sending' ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
+              {testPushStatus === 'sending'
+                ? (language === 'he' ? 'שולח...' : 'Sending...')
+                : testPushStatus === 'sent'
+                  ? (language === 'he' ? 'נשלח בהצלחה!' : 'Sent successfully!')
+                  : testPushStatus === 'error'
+                    ? (language === 'he' ? 'שגיאה' : 'Error')
+                    : (language === 'he' ? 'שלח התראת בדיקה' : 'Send Test Notification')}
+            </Text>
+          </TouchableOpacity>
+
+          {expoPushToken && (
+            <Text
+              style={{
+                fontSize: 11,
+                color: textSecondary,
+                marginTop: 8,
+                textAlign: isRTL ? 'right' : 'left',
+                fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+              }}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              Token: {expoPushToken}
+            </Text>
+          )}
         </View>
       </View>
     </ScrollView>

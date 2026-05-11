@@ -103,7 +103,6 @@ export default function App() {
 
         token = (await Notifications.getExpoPushTokenAsync({ 
           projectId: projectId,
-          development: false 
         })).data;
         console.log("Your Expo Push Token:", token);
       } catch (e) {
@@ -114,6 +113,20 @@ export default function App() {
     }
     return token;
   }
+  useEffect(() => {
+    const receivedSub = Notifications.addNotificationReceivedListener(notification => {
+      console.log('🔔 Notification received in foreground:', notification);
+    });
+    const responseSub = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('👆 Notification tapped:', response);
+    });
+
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     const hydratePreferences = async () => {
