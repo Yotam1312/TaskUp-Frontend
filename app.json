@@ -15,9 +15,9 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet":  true,
       "bundleIdentifier": "com.harelYotam.unitask",
-      "buildNumber": "1.0.0",
+      "buildNumber": "1.0.9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
