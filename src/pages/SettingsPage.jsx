@@ -389,21 +389,6 @@ const handleToggleChange = async (key, value) => {
             ))}
           </View>
 
-          {expoPushToken && (
-            <Text
-              style={{
-                fontSize: 11,
-                color: textSecondary,
-                marginTop: 8,
-                textAlign: isRTL ? 'right' : 'left',
-                fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-              }}
-              numberOfLines={1}
-              ellipsizeMode="middle"
-            >
-              Token: {expoPushToken}
-            </Text>
-          )}
         </View>
       </View>
     </ScrollView>
