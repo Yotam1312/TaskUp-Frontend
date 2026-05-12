@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "423257010843",
+    "project_id": "taskupapp",
+    "storage_bucket": "taskupapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423257010843:android:ce398153187086f45d8c3e",
+        "android_client_info": {
+          "package_name": "com.harel.taskup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtoqS7NwVo9ozPJ9Vw10nyT4nxuGLpvD0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

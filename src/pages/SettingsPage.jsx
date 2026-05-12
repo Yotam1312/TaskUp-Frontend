@@ -389,46 +389,6 @@ const handleToggleChange = async (key, value) => {
             ))}
           </View>
 
-          <TouchableOpacity
-            onPress={handleSendTestPush}
-            disabled={testPushStatus === 'sending'}
-            activeOpacity={0.8}
-            style={{
-              marginTop: 16,
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              borderRadius: 14,
-              backgroundColor: testPushStatus === 'sent' ? '#10b981' : testPushStatus === 'error' ? '#ef4444' : '#4f46e5',
-              alignItems: 'center',
-              opacity: testPushStatus === 'sending' ? 0.7 : 1,
-            }}
-          >
-            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
-              {testPushStatus === 'sending'
-                ? (language === 'he' ? 'שולח...' : 'Sending...')
-                : testPushStatus === 'sent'
-                  ? (language === 'he' ? 'נשלח בהצלחה!' : 'Sent successfully!')
-                  : testPushStatus === 'error'
-                    ? (language === 'he' ? 'שגיאה' : 'Error')
-                    : (language === 'he' ? 'שלח התראת בדיקה' : 'Send Test Notification')}
-            </Text>
-          </TouchableOpacity>
-
-          {expoPushToken && (
-            <Text
-              style={{
-                fontSize: 11,
-                color: textSecondary,
-                marginTop: 8,
-                textAlign: isRTL ? 'right' : 'left',
-                fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-              }}
-              numberOfLines={1}
-              ellipsizeMode="middle"
-            >
-              Token: {expoPushToken}
-            </Text>
-          )}
         </View>
       </View>
     </ScrollView>
