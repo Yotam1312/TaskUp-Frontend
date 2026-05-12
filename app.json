@@ -33,7 +33,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./src/assets/icon.png",
+          "icon": "./src/assets/android_icon.png",
           "color": "#4f46e5"
         }
       ]
